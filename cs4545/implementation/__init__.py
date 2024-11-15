@@ -1,3 +1,4 @@
+from .dolev_algorithm import DolevAlgorithm
 from .echo_algorithm import *
 from .ring_election import *
 
@@ -7,5 +8,7 @@ def get_algorithm(name):
         return EchoAlgorithm
     elif name == "ring":
         return RingElection
+    elif name == "dolev":
+        return DolevAlgorithm
     else:
         raise ValueError(f"Unknown algorithm: {name}")
