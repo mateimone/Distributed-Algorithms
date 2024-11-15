@@ -35,20 +35,7 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
         subnet = content['networks'][network_name]['ipam']['config'][0]['subnet'].split('/')[0]
         network_base = '.'.join(subnet.split('/')[0].split('.')[:-1])
 
-        # Create a ring topology
-        # for i in range(num_nodes):
-        #     n = copy.deepcopy(node)
-        #     n['ports'] = [f'{baseport + i}:{baseport + i}']
-        #     n['networks'][network_name]['ipv4_address'] = f'{network_base}.{10 + i}'
-        #     n['environment']['PID'] = i
-        #     n['environment']['TOPOLOGY'] = topology_file
-        #     n['environment']['ALGORITHM'] = algorithm
-        #     n['environment']['LOCATION'] = location
-        #     nodes[f'node{i}'] = n
-        #
-        #     connections[i] = [(i + 1) % num_nodes, (i - 1) % num_nodes]
-
-        # Create Dolev topology
+        # Create a 2f + 1 topology
         for i in range(num_nodes):
             n = copy.deepcopy(node)
             n['ports'] = [f'{baseport + i}:{baseport + i}']

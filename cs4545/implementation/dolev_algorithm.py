@@ -1,3 +1,6 @@
+from ipv8.community import CommunitySettings
+from ipv8.messaging.payload_dataclass import dataclass
+from ipv8.types import Peer
 
 from cs4545.system.da_types import *
 
@@ -8,6 +11,7 @@ class DolevMessage:
 
 
 class DolevAlgorithm(DistributedAlgorithm):
+
     def __init__(self, settings: CommunitySettings) -> None:
         super().__init__(settings)
         self.add_message_handler(DolevMessage, self.on_message)
@@ -18,12 +22,14 @@ class DolevAlgorithm(DistributedAlgorithm):
 
     async def on_start_as_starter(self):
         print(f"Node {self.node_id} is starting the algorithm")
-        peer = self.get_peers()[0]
-        print(self.get_peers())
-        # self.ez_send(peer, DolevMessage([]))
+        if not self.running:
+            peer = self.get_peers()
+            print(self.get_peers())
+            self.ez_send(peer, DolevMessage([]))
 
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:
+        self.running = True
         try:
             sender_id = self.node_id_from_peer(peer)
             print(peer)
