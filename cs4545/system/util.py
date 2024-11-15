@@ -13,8 +13,8 @@ def cli():
 
 @cli.command('compose')
 @click.argument('num_nodes', type=int)
-@click.argument('topology_file', type=str, default='topologies/echo.yaml')
-@click.argument('algorithm', type=str, default='echo')
+@click.argument('topology_file', type=str, default='topologies/dolev.yaml')
+@click.argument('algorithm', type=str, default='dolev')
 @click.option('--template_file', type=str, default='docker-compose.template.yml')
 def compose(num_nodes, topology_file, algorithm, template_file):
     prepare_compose_file(num_nodes, topology_file, algorithm, template_file)
@@ -36,6 +36,19 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
         network_base = '.'.join(subnet.split('/')[0].split('.')[:-1])
 
         # Create a ring topology
+        # for i in range(num_nodes):
+        #     n = copy.deepcopy(node)
+        #     n['ports'] = [f'{baseport + i}:{baseport + i}']
+        #     n['networks'][network_name]['ipv4_address'] = f'{network_base}.{10 + i}'
+        #     n['environment']['PID'] = i
+        #     n['environment']['TOPOLOGY'] = topology_file
+        #     n['environment']['ALGORITHM'] = algorithm
+        #     n['environment']['LOCATION'] = location
+        #     nodes[f'node{i}'] = n
+        #
+        #     connections[i] = [(i + 1) % num_nodes, (i - 1) % num_nodes]
+
+        # Create Dolev topology
         for i in range(num_nodes):
             n = copy.deepcopy(node)
             n['ports'] = [f'{baseport + i}:{baseport + i}']
@@ -46,8 +59,19 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
             n['environment']['LOCATION'] = location
             nodes[f'node{i}'] = n
 
-            connections[i] = [(i + 1) % num_nodes, (i - 1) % num_nodes]
+        with open(topology_file, "r") as file:
+            for line in file:
+                line = line.strip()
 
+                if line.endswith(":"):
+                    current_key = int(line[:-1])
+                    connections[current_key] = []
+                elif line.startswith("-"):
+                    value = int(line[1:].strip())
+                    if current_key is not None:
+                        connections[current_key].append(value)
+
+        print(connections)
         content['services'] = nodes
 
         with open('docker-compose.yml', 'w') as f2:

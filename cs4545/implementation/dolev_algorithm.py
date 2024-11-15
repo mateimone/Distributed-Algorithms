@@ -1,8 +1,10 @@
+
 from cs4545.system.da_types import *
+
 
 @dataclass(msg_id=3)
 class DolevMessage:
-    path: List[Peer]
+    path: List[int]
 
 
 class DolevAlgorithm(DistributedAlgorithm):
@@ -18,7 +20,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         print(f"Node {self.node_id} is starting the algorithm")
         peer = self.get_peers()[0]
         print(self.get_peers())
-        self.ez_send(peer, DolevMessage([]))
+        # self.ez_send(peer, DolevMessage([]))
 
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:

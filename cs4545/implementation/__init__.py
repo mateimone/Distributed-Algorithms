@@ -1,4 +1,4 @@
-from .dolev_algorithm import DolevAlgorithm
+from .dolev_algorithm import *
 from .echo_algorithm import *
 from .ring_election import *
 
