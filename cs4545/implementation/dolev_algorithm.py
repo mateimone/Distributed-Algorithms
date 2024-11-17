@@ -1,4 +1,5 @@
 import os
+import uuid
 import yaml
 import random
 import asyncio
@@ -11,6 +12,18 @@ class DolevMessage:
     id: int
     content: str
     path: List[int]
+
+
+def generate_unique_id():
+    # Generate UUID and mask it to the 64-bit range
+    return uuid.uuid4().int & ((1 << 32) - 1)  # Limit the size to 32 bits so that we don't have problems with ipv8
+
+
+def random_delay(min_delay: float = 0.1, max_delay: float = 1.0) -> float:
+    """
+    Return a random delay between `min_delay` and `max_delay` seconds.
+    """
+    return random.uniform(min_delay, max_delay)
 
 
 class DolevAlgorithm(DistributedAlgorithm):
@@ -34,8 +47,10 @@ class DolevAlgorithm(DistributedAlgorithm):
         if "messages" in instruction:
             messages = instruction["messages"]
             for (i, message) in enumerate(messages):
-                print(f"Node {self.node_id} is broadcasting message {i}: {message}")
-                self.msg_to_broadcast.append(DolevMessage(i, message, []))
+                # Get unique id for a message
+                unique_id = generate_unique_id()
+                print(f"Node {self.node_id} is broadcasting message {unique_id}: {message}")
+                self.msg_to_broadcast.append(DolevMessage(unique_id, message, []))
         await super().on_start()
 
     async def on_start_as_starter(self):
@@ -48,7 +63,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         # Broadcast messages to neighbors
         for neighbor_id, peer in self.nodes.items():
             for message in self.msg_to_broadcast:
-                delay = self.random_delay()  # Get a random delay
+                delay = random_delay()  # Get a random delay
                 print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
                 await asyncio.sleep(delay)  # Introduce the random delay
                 print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
@@ -78,7 +93,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             for neighbor_id, peer in self.nodes.items():
                 # Do not send back to nodes who already received this message
                 if neighbor_id not in new_path:
-                    delay = self.random_delay()  # Get a random delay
+                    delay = random_delay()  # Get a random delay
                     print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
                     await asyncio.sleep(delay)  # Introduce the random delay
                     print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
@@ -88,12 +103,6 @@ class DolevAlgorithm(DistributedAlgorithm):
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
-
-    def random_delay(self, min_delay: float = 0.1, max_delay: float = 1.0) -> float:
-        """
-        Return a random delay between `min_delay` and `max_delay` seconds.
-        """
-        return random.uniform(min_delay, max_delay)
 
     def _has_f_plus_1_disjoint_paths(self, msg_id: int) -> bool:
         """
