@@ -4,24 +4,53 @@ import yaml
 import random
 import asyncio
 
-from typing import Set
+from typing import Set, List
 from cs4545.system.da_types import *
-
-@dataclass(msg_id=4)
-class DolevMessage:
-    id: int
-    content: str
-    path: List[int]
 
 @dataclass
 class Path:
     start: int
     nodes: List[int]
 
+    def add(self, new_node_id: int):
+        self.nodes.append(new_node_id)
+        return self.nodes
+
+    def node_disjoint(self, other: "Path") -> bool:
+        if self.start != other.start:
+            return False
+        for node in self.nodes:
+            if node in other.nodes and node != self.start:
+                return False
+        return True
+
+    @staticmethod
+    def all_disjoint(paths: List["Path"]):
+        for i in range(len(paths)):
+            for j in range(i + 1, len(paths)):
+                if not paths[i].node_disjoint(paths[j]):
+                    return False
+        return True
+
+    @staticmethod
+    def maximum_disjoint_set(paths: List["Path"]):
+        subsets = [[]]
+        for index in range(0, len(paths)):
+            subsets += [subset + [index] for subset in subsets]
+        size = 0
+        for subset in subsets[1:]:
+            if Path.all_disjoint([paths[s] for s in subset]):
+                size = max(size, len(subset))
+        return size
+
+@dataclass(msg_id=4)
+class DolevMessage:
+    id: str
+    content: str
+    path: Path
 
 def generate_unique_id():
-    # Generate UUID and mask it to the 64-bit range
-    return uuid.uuid4().int & ((1 << 32) - 1)  # Limit the size to 32 bits so that we don't have problems with ipv8
+    return uuid.uuid4().hex
 
 
 def random_delay(min_delay: float = 0.1, max_delay: float = 1.0) -> float:
@@ -40,8 +69,8 @@ class DolevAlgorithm(DistributedAlgorithm):
         with open(os.environ.get("SCENARIO"), "r") as f:
             self.instructions = yaml.safe_load(f)
 
-            self.delivered = {}                                     # dict for every message id if it was delivered
-            self.paths = {}                                         # paths of nodes for each message id;
+            self.delivered = {}                                     # dict for every message id if it was delivered;
+            self.paths = {}                                         # paths of nodes for each message id; (msg_id - List[Path])
             self.f = int (os.environ.get("F"))                      # get the nr of faulty nodes from common env vars
             self.msg_to_broadcast: List[DolevMessage] = []          # if current p_i is starting node, it needs to broadcast these messages
             self.add_message_handler(DolevMessage, self.on_message)
@@ -55,7 +84,7 @@ class DolevAlgorithm(DistributedAlgorithm):
                 # Get unique id for a message
                 unique_id = generate_unique_id()
                 print(f"Node {self.node_id} is broadcasting message {unique_id}: {message}")
-                self.msg_to_broadcast.append(DolevMessage(unique_id, message, []))
+                self.msg_to_broadcast.append(DolevMessage(unique_id, message, Path(self.node_id,[])))
 
         # If node has messages to deliver, then it is a starting node
         for message in self.msg_to_broadcast:
@@ -71,7 +100,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         # Broadcast message to neighbors
         for neighbor_id, peer in self.nodes.items():
             delay = random_delay()  # Get a random delay
-            print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
+            #print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
             await asyncio.sleep(delay)  # Introduce the random delay
             print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
             self.ez_send(peer, message)
@@ -84,41 +113,31 @@ class DolevAlgorithm(DistributedAlgorithm):
             sender_id = self.node_id_from_peer(peer)
             print(f"[Node {self.node_id}] Got a message from node: {sender_id}.\t")
 
-            new_path = payload.path + [sender_id]
+            payload.path.add(sender_id)
             if payload.id not in self.paths:
                 self.paths[payload.id] = []
 
-            self.paths[payload.id].append(new_path)
+            self.paths[payload.id].append(payload.path)
 
             # Check for f+1 disjoint paths
-            if self.disjoint_paths(payload.id) and payload.id not in self.delivered:
-                print(f"[Node {self.node_id}] Delivering message {payload.id}.")
+            if Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
+                print(f"[Node {self.node_id}] Delivered message {payload.id}.")
                 self.delivered[payload.id] = True
 
             # Broadcast message to all neighbors except the sender
             for neighbor_id, peer in self.nodes.items():
                 # Do not send back to nodes who already received this message
-                if neighbor_id not in new_path:
+                if neighbor_id not in payload.path.nodes:
                     delay = random_delay()  # Get a random delay
                     print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
                     await asyncio.sleep(delay)  # Introduce the random delay
                     print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
-                    rebroadcast_msg = DolevMessage(payload.id, payload.content, new_path)
+                    rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path)
                     self.ez_send(peer, rebroadcast_msg)
 
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
-
-
-
-    def disjoint_paths(self, msg_id: int) -> bool:
-        # path = self.paths[msg_id]
-        # for i in range (len(path)):
-        #     for j in range(len(path)):
-        return False
-
-
 
 
 class ByzantineDolevAlgorithm(DolevAlgorithm):
