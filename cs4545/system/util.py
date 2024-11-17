@@ -26,16 +26,16 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
 
         node = content['services']['node0']
         content['x-common-variables']['TOPOLOGY'] = topology_file
-
+        faulty_nodes = content['x-common-variables']['F']
         nodes = {}
         baseport = 9090
-        connections = {}
 
         network_name = list(content['networks'].keys())[0]
         subnet = content['networks'][network_name]['ipam']['config'][0]['subnet'].split('/')[0]
         network_base = '.'.join(subnet.split('/')[0].split('.')[:-1])
 
-        # Create a 2f + 1 topology
+        # with open(, 'r'):
+
         for i in range(num_nodes):
             n = copy.deepcopy(node)
             n['ports'] = [f'{baseport + i}:{baseport + i}']
@@ -46,28 +46,15 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
             n['environment']['LOCATION'] = location
             nodes[f'node{i}'] = n
 
-        with open(topology_file, "r") as file:
-            for line in file:
-                line = line.strip()
-
-                if line.endswith(":"):
-                    current_key = int(line[:-1])
-                    connections[current_key] = []
-                elif line.startswith("-"):
-                    value = int(line[1:].strip())
-                    if current_key is not None:
-                        connections[current_key].append(value)
-
-        print(connections)
         content['services'] = nodes
 
         with open('docker-compose.yml', 'w') as f2:
             yaml.safe_dump(content, f2)
             print(f'Output written to docker-compose.yml')
 
-        with open(topology_file, 'w') as f3:
-            yaml.safe_dump(connections, f3)
-            print(f'Output written to {topology_file}')
+        # with open(topology_file, 'w') as f3:
+        #     yaml.safe_dump(connections, f3)
+        #     print(f'Output written to {topology_file}')
 
 
 @cli.command('cfg')

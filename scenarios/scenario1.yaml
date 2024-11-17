@@ -1,0 +1,34 @@
+0:
+  type: "correct"
+  messages:
+    - "Message example 1"
+
+1:
+  type: "crash"
+
+2:
+  type: "byzantine"
+
+3:
+  type: "correct"
+
+4:
+  type: "correct"
+  messages:
+    - "Message example 2"
+    - "Message example 3"
+
+5:
+  type: "crash"
+
+6:
+  type: "byzantine"
+
+7:
+  type: "correct"
+
+8:
+  type: "correct"
+
+9:
+  type: "correct"

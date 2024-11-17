@@ -1,5 +1,5 @@
 
 NUM_NODES=10
-python src/util.py $NUM_NODES topologies/dolev.yaml dolev
+python cs4545/system/util.py compose $NUM_NODES topologies/dolev.yaml dolev
 docker compose build
 docker compose up
