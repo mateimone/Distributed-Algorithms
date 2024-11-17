@@ -1,4 +1,5 @@
 import copy
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -34,7 +35,8 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
         subnet = content['networks'][network_name]['ipam']['config'][0]['subnet'].split('/')[0]
         network_base = '.'.join(subnet.split('/')[0].split('.')[:-1])
 
-        # with open(, 'r'):
+        with open(content['x-common-variables']['SCENARIO'], "r") as scenario:
+            node_instructions = yaml.safe_load(scenario)
 
         for i in range(num_nodes):
             n = copy.deepcopy(node)
@@ -42,7 +44,7 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
             n['networks'][network_name]['ipv4_address'] = f'{network_base}.{10 + i}'
             n['environment']['PID'] = i
             n['environment']['TOPOLOGY'] = topology_file
-            n['environment']['ALGORITHM'] = algorithm
+            n['environment']['ALGORITHM'] = node_instructions[i]["type"]
             n['environment']['LOCATION'] = location
             nodes[f'node{i}'] = n
 

@@ -58,7 +58,6 @@ if __name__ == "__main__":
     parser.add_argument("algorithm", type=str, nargs="?", default='echo')
     parser.add_argument("-location", type=str, default='cs4545')
     parser.add_argument("-docker", action='store_true')
-    parser.add_argument("-start_node", type=int, default=0)
     args = parser.parse_args()
     node_id = args.node_id
 
@@ -68,4 +67,4 @@ if __name__ == "__main__":
         topology = yaml.safe_load(f)
         connections = topology[node_id]
 
-        run(start_communities(node_id, connections, alg, not args.docker, args.start_node))
+        run(start_communities(node_id, connections, alg, not args.docker, 0))

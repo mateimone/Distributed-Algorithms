@@ -13,6 +13,11 @@ class DolevMessage:
     content: str
     path: List[int]
 
+@dataclass
+class Path:
+    start: int
+    nodes: List[int]
+
 
 def generate_unique_id():
     # Generate UUID and mask it to the 64-bit range
@@ -35,7 +40,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         with open(os.environ.get("SCENARIO"), "r") as f:
             self.instructions = yaml.safe_load(f)
 
-            self.delivered = False
+            self.delivered = {}                                     # dict for every message id if it was delivered
             self.paths = {}                                         # paths of nodes for each message id;
             self.f = int (os.environ.get("F"))                      # get the nr of faulty nodes from common env vars
             self.msg_to_broadcast: List[DolevMessage] = []          # if current p_i is starting node, it needs to broadcast these messages
@@ -51,29 +56,30 @@ class DolevAlgorithm(DistributedAlgorithm):
                 unique_id = generate_unique_id()
                 print(f"Node {self.node_id} is broadcasting message {unique_id}: {message}")
                 self.msg_to_broadcast.append(DolevMessage(unique_id, message, []))
-        await super().on_start()
 
-    async def on_start_as_starter(self):
+        # If node has messages to deliver, then it is a starting node
+        for message in self.msg_to_broadcast:
+            self.delivered[message.id] = False
+            await self.on_broadcast(message)
+
+    async def on_broadcast(self, message: DolevMessage):
         print(f"Node {self.node_id} is starting the algorithm")
 
-        # Send messages to yourself
-        for message in self.msg_to_broadcast:
-            self.ez_send(self.get_peers()[0], message)
+        # Send message to yourself
+        self.ez_send(self.get_peers()[0], message)
 
-        # Broadcast messages to neighbors
+        # Broadcast message to neighbors
         for neighbor_id, peer in self.nodes.items():
-            for message in self.msg_to_broadcast:
-                delay = random_delay()  # Get a random delay
-                print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
-                await asyncio.sleep(delay)  # Introduce the random delay
-                print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
-                self.ez_send(peer, message)
+            delay = random_delay()  # Get a random delay
+            print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
+            await asyncio.sleep(delay)  # Introduce the random delay
+            print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
+            self.ez_send(peer, message)
 
-        self.delivered = True
+        self.delivered[message.id] = True
 
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:
-        self.running = True
         try:
             sender_id = self.node_id_from_peer(peer)
             print(f"[Node {self.node_id}] Got a message from node: {sender_id}.\t")
@@ -84,10 +90,10 @@ class DolevAlgorithm(DistributedAlgorithm):
 
             self.paths[payload.id].append(new_path)
 
-            # Check if the node is connected to the source through f+1 disjoint paths
-            if self._has_f_plus_1_disjoint_paths(payload.id) and not self.delivered:
+            # Check for f+1 disjoint paths
+            if self.disjoint_paths(payload.id) and payload.id not in self.delivered:
                 print(f"[Node {self.node_id}] Delivering message {payload.id}.")
-                self.delivered = True
+                self.delivered[payload.id] = True
 
             # Broadcast message to all neighbors except the sender
             for neighbor_id, peer in self.nodes.items():
@@ -104,13 +110,24 @@ class DolevAlgorithm(DistributedAlgorithm):
             print(f"Error in on_message: {e}")
             raise e
 
-    def _has_f_plus_1_disjoint_paths(self, msg_id: int) -> bool:
-        """
-        Check if there are at least f+1 disjoint paths in self.paths for the message with msg_id.
-        """
-        if msg_id not in self.paths or not self.paths[msg_id]:
-            print(f"No paths found for msg_id {msg_id}.")
-            return False
 
-        unique_paths = set(tuple(path) for path in self.paths[msg_id])
-        return len(unique_paths) >= self.f + 1
+
+    def disjoint_paths(self, msg_id: int) -> bool:
+        # path = self.paths[msg_id]
+        # for i in range (len(path)):
+        #     for j in range(len(path)):
+        return False
+
+
+
+
+class ByzantineDolevAlgorithm(DolevAlgorithm):
+
+    def __init__(self, settings: CommunitySettings) -> None:
+        super().__init__(settings)
+
+    async def on_start(self):
+        await super().on_start()
+
+    async def on_broadcast(self, message: DolevMessage):
+        await super().on_broadcast(message)

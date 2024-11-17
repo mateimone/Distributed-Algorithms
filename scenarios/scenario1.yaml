@@ -1,34 +1,36 @@
 0:
-  type: "correct"
+  type: "dolev"
   messages:
     - "Message example 1"
 
 1:
-  type: "crash"
+  type: "dolev"
 
 2:
   type: "byzantine"
+  messages:
+    - "Malicious message"
 
 3:
-  type: "correct"
+  type: "dolev"
 
 4:
-  type: "correct"
+  type: "dolev"
   messages:
     - "Message example 2"
     - "Message example 3"
 
 5:
-  type: "crash"
+  type: "dolev"
 
 6:
-  type: "byzantine"
+  type: "dolev"
 
 7:
-  type: "correct"
+  type: "dolev"
 
 8:
-  type: "correct"
+  type: "dolev"
 
 9:
-  type: "correct"
+  type: "dolev"

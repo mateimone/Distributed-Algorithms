@@ -17,4 +17,4 @@ RUN pip install -r requirements.txt
 COPY cs4545 /home/python/cs4545
 COPY topologies /home/python/topologies
 COPY scenarios /home/python/scenarios
-CMD python -u -m cs4545.system.run $PID $TOPOLOGY $ALGORITHM -location=$LOCATION -docker -start_node=$START_NODE
+CMD python -u -m cs4545.system.run $PID $TOPOLOGY $ALGORITHM -location=$LOCATION -docker
