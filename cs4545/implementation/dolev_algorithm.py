@@ -110,6 +110,9 @@ class DolevAlgorithm(DistributedAlgorithm):
             sender_id = self.node_id_from_peer(peer)
             print(f"[Node {self.node_id}] Got a message from node: {sender_id}.\t")
 
+            if self.delivered.get(payload.id) is not None:
+                return
+
             payload.path.add(sender_id)
             if payload.id not in self.paths:
                 self.paths[payload.id] = []
@@ -131,12 +134,15 @@ class DolevAlgorithm(DistributedAlgorithm):
                 # Do not send back to nodes who already received this message
                 if neighbor_id not in payload.path.nodes:
                     delay = random_delay()  # Get a random delay
-                    print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
+                    # print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
                     await asyncio.sleep(delay)  # Introduce the random delay
                     print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
-                    rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path)
+                    if self.delivered.get(payload.id) is not None:
+                        rebroadcast_msg = DolevMessage(payload.id, payload.content, Path(payload.path.start, []))
+                    else:
+                        rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path)
                     self.ez_send(peer, rebroadcast_msg)
-
+            print(f"Paths for node {self.node_id}: {self.paths[payload.id]}")
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
