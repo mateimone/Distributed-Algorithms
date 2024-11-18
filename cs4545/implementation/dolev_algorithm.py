@@ -1,5 +1,7 @@
 import os
 import uuid
+from datetime import datetime
+
 import yaml
 import random
 import asyncio
@@ -74,6 +76,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             self.f = int (os.environ.get("F"))                      # get the nr of faulty nodes from common env vars
             self.msg_to_broadcast: List[DolevMessage] = []          # if current p_i is starting node, it needs to broadcast these messages
             self.add_message_handler(DolevMessage, self.on_message)
+            self.last_message_time = None
 
     async def on_start(self):
         instruction = self.instructions[self.node_id]
@@ -91,14 +94,16 @@ class DolevAlgorithm(DistributedAlgorithm):
             self.delivered[message.id] = False
             await self.on_broadcast(message)
 
+        # Start monitoring for inactivity
+        await asyncio.create_task(self.monitor_inactivity())
+
     async def on_broadcast(self, message: DolevMessage):
         print(f"Node {self.node_id} is starting the algorithm")
 
         # Broadcast message to neighbors
         for neighbor_id, peer in self.nodes.items():
-            delay = random_delay()  # Get a random delay
-            #print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
-            await asyncio.sleep(delay)  # Introduce the random delay
+            delay = random_delay()
+            await asyncio.sleep(delay)
             print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
             self.ez_send(peer, message)
 
@@ -107,13 +112,16 @@ class DolevAlgorithm(DistributedAlgorithm):
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:
         try:
+            self.last_message_time = datetime.now()
+
             sender_id = self.node_id_from_peer(peer)
             print(f"[Node {self.node_id}] Got a message from node: {sender_id}.\t")
 
             if self.delivered.get(payload.id) is not None:
-                return
+                 return
 
             payload.path.add(sender_id)
+
             if payload.id not in self.paths:
                 self.paths[payload.id] = []
 
@@ -125,7 +133,7 @@ class DolevAlgorithm(DistributedAlgorithm):
                 self.delivered[payload.id] = True
 
             # Check for f+1 disjoint paths
-            elif Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
+            if Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
                 print(f"[Node {self.node_id}] Delivered message {payload.id}.")
                 self.delivered[payload.id] = True
 
@@ -133,8 +141,8 @@ class DolevAlgorithm(DistributedAlgorithm):
             for neighbor_id, peer in self.nodes.items():
                 # Do not send back to nodes who already received this message
                 if neighbor_id not in payload.path.nodes:
-                    delay = random_delay()  # Get a random delay
-                    # print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
+                    delay = random_delay()
+                    print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
                     await asyncio.sleep(delay)  # Introduce the random delay
                     print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
                     if self.delivered.get(payload.id) is not None:
@@ -146,6 +154,19 @@ class DolevAlgorithm(DistributedAlgorithm):
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
+
+    async def monitor_inactivity(self):
+        inactivity_threshold = 10  # In seconds
+
+        while True:
+            await asyncio.sleep(1)  # Check every second
+            if self.last_message_time:
+                elapsed_time = (datetime.now() - self.last_message_time).total_seconds()
+                if elapsed_time > inactivity_threshold:
+                    print(
+                        f"[Node {self.node_id}] Stopping due to inactivity. Last message received {elapsed_time:.2f} seconds ago.")
+                    self.stop()  # Stop the algorithm, save node stats to output folder
+                    break
 
 
 class ByzantineDolevAlgorithm(DolevAlgorithm):
