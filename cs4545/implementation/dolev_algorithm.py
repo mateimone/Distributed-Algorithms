@@ -1,5 +1,7 @@
 import os
 import uuid
+from collections import defaultdict
+
 import yaml
 import random
 import asyncio
@@ -74,6 +76,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             self.f = int (os.environ.get("F"))                      # get the nr of faulty nodes from common env vars
             self.msg_to_broadcast: List[DolevMessage] = []          # if current p_i is starting node, it needs to broadcast these messages
             self.add_message_handler(DolevMessage, self.on_message)
+            self.neighbors_delivered: Dict[str, Set[int]] = defaultdict(set)  # dict for a node telling it what neighbors have delivered a msg
 
     async def on_start(self):
         instruction = self.instructions[self.node_id]
@@ -99,7 +102,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             delay = random_delay()  # Get a random delay
             #print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
             await asyncio.sleep(delay)  # Introduce the random delay
-            print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
+            # print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
             self.ez_send(peer, message)
 
         self.delivered[message.id] = True
@@ -108,12 +111,17 @@ class DolevAlgorithm(DistributedAlgorithm):
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:
         try:
             sender_id = self.node_id_from_peer(peer)
-            print(f"[Node {self.node_id}] Got a message from node: {sender_id}.\t")
+            # print(f"[Node {self.node_id}] Got a message from node: {sender_id}.\t")
+
+            # Optimization MD.3
+            if not payload.path.nodes:
+                self.neighbors_delivered[payload.id].add(sender_id)
 
             if self.delivered.get(payload.id) is not None:
                 return
 
             payload.path.add(sender_id)
+
             if payload.id not in self.paths:
                 self.paths[payload.id] = []
 
@@ -125,24 +133,31 @@ class DolevAlgorithm(DistributedAlgorithm):
                 self.delivered[payload.id] = True
 
             # Check for f+1 disjoint paths
-            elif Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
+            if Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
                 print(f"[Node {self.node_id}] Delivered message {payload.id}.")
                 self.delivered[payload.id] = True
 
+            # Optimization MD.2
+            if self.delivered.get(payload.id) is not None:
+                for neighbor_id, peer in self.nodes.items():
+                    self.ez_send(peer, DolevMessage(payload.id, payload.content, Path(payload.path.start, [])))
+                return
+
             # Broadcast message to all neighbors except the sender
+
             for neighbor_id, peer in self.nodes.items():
+                # print(f"Node: {self.node_id}, Neighbor: {neighbor_id}, Paths: {self.paths[payload.id]}")
+                # print(f"NEIGHBORS DELIVERED: {self.neighbors_delivered}")
+
                 # Do not send back to nodes who already received this message
-                if neighbor_id not in payload.path.nodes:
-                    delay = random_delay()  # Get a random delay
+                if neighbor_id not in payload.path.nodes and neighbor_id not in self.neighbors_delivered[payload.id]:
+                    delay = random_delay()
                     # print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
-                    await asyncio.sleep(delay)  # Introduce the random delay
-                    print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
-                    if self.delivered.get(payload.id) is not None:
-                        rebroadcast_msg = DolevMessage(payload.id, payload.content, Path(payload.path.start, []))
-                    else:
-                        rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path)
+                    await asyncio.sleep(delay)
+                    # print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
+                    rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path)
                     self.ez_send(peer, rebroadcast_msg)
-            print(f"Paths for node {self.node_id}: {self.paths[payload.id]}")
+                    # print(f"Current {self.node_id} Neighbor {neighbor_id}, Path {payload.path.nodes}")
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
