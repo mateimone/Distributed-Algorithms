@@ -94,9 +94,6 @@ class DolevAlgorithm(DistributedAlgorithm):
     async def on_broadcast(self, message: DolevMessage):
         print(f"Node {self.node_id} is starting the algorithm")
 
-        # Send message to yourself
-        self.ez_send(self.get_peers()[0], message)
-
         # Broadcast message to neighbors
         for neighbor_id, peer in self.nodes.items():
             delay = random_delay()  # Get a random delay
@@ -119,8 +116,13 @@ class DolevAlgorithm(DistributedAlgorithm):
 
             self.paths[payload.id].append(payload.path)
 
+            # Optimization MD.1
+            if payload.path.start in self.nodes and payload.path.start == sender_id:
+                print(f"[Node {self.node_id}] Delivered message {payload.id}.")
+                self.delivered[payload.id] = True
+
             # Check for f+1 disjoint paths
-            if Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
+            elif Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
                 print(f"[Node {self.node_id}] Delivered message {payload.id}.")
                 self.delivered[payload.id] = True
 
