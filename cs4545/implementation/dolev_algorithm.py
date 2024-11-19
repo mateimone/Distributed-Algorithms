@@ -124,8 +124,9 @@ class DolevAlgorithm(DistributedAlgorithm):
             if not payload.path.nodes:
                 self.neighbors_delivered[payload.id].add(sender_id)
 
+            # Optimization MD.5
             if self.delivered.get(payload.id) is not None:
-                 return
+                return
 
             payload.path.add(sender_id)
 
@@ -133,6 +134,11 @@ class DolevAlgorithm(DistributedAlgorithm):
                 self.paths[payload.id] = []
 
             self.paths[payload.id].append(payload.path)
+
+            # Optimization MD.4
+            if self.delivered.get(payload.id) == True:
+                print("Run the optimization 2")
+                return
 
             # Optimization MD.1
             if payload.path.start in self.nodes and payload.path.start == sender_id:
