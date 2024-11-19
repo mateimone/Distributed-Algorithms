@@ -52,6 +52,15 @@ class DolevMessage:
     content: str
     path: Path
 
+    def __hash__(self) -> int:
+        return (self.id, self.content).__hash__()
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, DolevMessage):
+            return False
+        return self.id == other.id and self.content == other.content
+
+
 def generate_unique_id():
     return uuid.uuid4().hex
 
@@ -72,16 +81,17 @@ class DolevAlgorithm(DistributedAlgorithm):
         with open(os.environ.get("SCENARIO"), "r") as f:
             self.instructions = yaml.safe_load(f)
 
-            self.delivered = {}                                               # dict for every message id if it was delivered;
-            self.paths = {}                                                   # paths of nodes for each message id; (msg_id - List[Path])
+            self.delivered = {}                                               # dict for every message if it was delivered;
+            self.paths = {}                                                   # paths of nodes for each message; (message - List[Path])
             self.f = int (os.environ.get("F"))                                # get the nr of faulty nodes from common env vars
             self.msg_to_broadcast: List[DolevMessage] = []                    # if current p_i is starting node, it needs to broadcast these messages
             self.add_message_handler(DolevMessage, self.on_message)
             self.last_message_time = None
-            self.neighbors_delivered: Dict[str, Set[int]] = defaultdict(set)  # dict for a node telling it what neighbors have delivered a msg
+            self.neighbors_delivered: Dict[DolevMessage, Set[int]] = defaultdict(set)  # dict for a node telling it what neighbors have delivered a msg
 
     async def on_start(self):
         instruction = self.instructions[self.node_id]
+
 
         if "messages" in instruction:
             messages = instruction["messages"]
@@ -93,7 +103,7 @@ class DolevAlgorithm(DistributedAlgorithm):
 
         # If node has messages to deliver, then it is a starting node
         for message in self.msg_to_broadcast:
-            self.delivered[message.id] = False
+            self.delivered[message] = False
             await self.on_broadcast(message)
 
         # Start monitoring for inactivity
@@ -106,11 +116,11 @@ class DolevAlgorithm(DistributedAlgorithm):
         for neighbor_id, peer in self.nodes.items():
             delay = random_delay()
             #print(f"Node {self.node_id} will wait for {delay:.2f} seconds before sending message {message.id}.")
-            await asyncio.sleep(delay)  # Introduce the random delay
+            await asyncio.sleep(delay)
             # print(f"Sending message {message.id} to node {neighbor_id} from {self.node_id}")
             self.ez_send(peer, message)
 
-        self.delivered[message.id] = True
+        self.delivered[message] = True
 
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:
@@ -122,36 +132,36 @@ class DolevAlgorithm(DistributedAlgorithm):
 
             # Optimization MD.3
             if not payload.path.nodes:
-                self.neighbors_delivered[payload.id].add(sender_id)
+                self.neighbors_delivered[payload].add(sender_id)
 
             # Optimization MD.5
-            if self.delivered.get(payload.id) is not None:
+            if self.delivered.get(payload) is not None:
                 return
 
             payload.path.add(sender_id)
 
-            if payload.id not in self.paths:
-                self.paths[payload.id] = []
+            if payload not in self.paths:
+                self.paths[payload] = []
 
-            self.paths[payload.id].append(payload.path)
+            self.paths[payload].append(payload.path)
 
             # Optimization MD.4
-            if self.delivered.get(payload.id) == True:
+            if self.delivered.get(payload):
                 print("Run the optimization 2")
                 return
 
             # Optimization MD.1
             if payload.path.start in self.nodes and payload.path.start == sender_id:
                 print(f"[Node {self.node_id}] Delivered message {payload.id}.")
-                self.delivered[payload.id] = True
+                self.delivered[payload] = True
 
             # Check for f+1 disjoint paths
-            if Path.maximum_disjoint_set(self.paths[payload.id]) >= self.f + 1 and payload.id not in self.delivered:
+            if Path.maximum_disjoint_set(self.paths[payload]) >= self.f + 1 and payload not in self.delivered:
                 print(f"[Node {self.node_id}] Delivered message {payload.id}.")
-                self.delivered[payload.id] = True
+                self.delivered[payload] = True
 
             # Optimization MD.2
-            if self.delivered.get(payload.id) is not None:
+            if self.delivered.get(payload) is not None:
                 for neighbor_id, peer in self.nodes.items():
                     self.ez_send(peer, DolevMessage(payload.id, payload.content, Path(payload.path.start, [])))
                 return
@@ -159,11 +169,11 @@ class DolevAlgorithm(DistributedAlgorithm):
             # Broadcast message to all neighbors except the sender
 
             for neighbor_id, peer in self.nodes.items():
-                # print(f"Node: {self.node_id}, Neighbor: {neighbor_id}, Paths: {self.paths[payload.id]}")
+                # print(f"Node: {self.node_id}, Neighbor: {neighbor_id}, Paths: {self.paths[payload]}")
                 # print(f"NEIGHBORS DELIVERED: {self.neighbors_delivered}")
 
                 # Do not send back to nodes who already received this message
-                if neighbor_id not in payload.path.nodes and neighbor_id not in self.neighbors_delivered[payload.id]:
+                if neighbor_id not in payload.path.nodes and neighbor_id not in self.neighbors_delivered[payload]:
                     delay = random_delay()
                     # print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
                     await asyncio.sleep(delay)
