@@ -1,5 +1,6 @@
 import copy
 import os
+import random
 from pathlib import Path
 from typing import Optional
 
@@ -16,12 +17,13 @@ def cli():
 @click.argument('num_nodes', type=int)
 @click.argument('topology_file', type=str, default='topologies/dolev.yaml')
 @click.argument('algorithm', type=str, default='dolev')
+@click.argument('connected', type=int, default=3)
 @click.option('--template_file', type=str, default='docker-compose.template.yml')
-def compose(num_nodes, topology_file, algorithm, template_file):
-    prepare_compose_file(num_nodes, topology_file, algorithm, template_file)
+def compose(num_nodes, topology_file, algorithm, template_file, connected):
+    prepare_compose_file(num_nodes, topology_file, algorithm, template_file, connected)
 
 
-def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, location='cs4545'):
+def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, connected, location='cs4545'):
     with open(template_file, 'r') as f:
         content = yaml.safe_load(f)
 
@@ -30,6 +32,7 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
         faulty_nodes = content['x-common-variables']['F']
         nodes = {}
         baseport = 9090
+        paths = {}
 
         network_name = list(content['networks'].keys())[0]
         subnet = content['networks'][network_name]['ipam']['config'][0]['subnet'].split('/')[0]
@@ -47,6 +50,22 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
             n['environment']['ALGORITHM'] = node_instructions[i]["type"]
             n['environment']['LOCATION'] = location
             nodes[f'node{i}'] = n
+            paths[i] = [(i + 1) % num_nodes, (i - 1) % num_nodes]
+            # paths[i] = []
+
+        for i in range(num_nodes):
+            while len(paths[i]) < connected:
+                valid_paths = []
+                for node in range(num_nodes):
+                    if node != i and len(paths[node]) <= connected and node not in paths[i]:
+                        valid_paths.append(node)
+
+                if valid_paths == []:
+                    break
+
+                new_path = random.choice(valid_paths)
+                paths[i].append(new_path)
+                paths[new_path].append(i)
 
         content['services'] = nodes
 
@@ -54,9 +73,9 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, loc
             yaml.safe_dump(content, f2)
             print(f'Output written to docker-compose.yml')
 
-        # with open(topology_file, 'w') as f3:
-        #     yaml.safe_dump(connections, f3)
-        #     print(f'Output written to {topology_file}')
+        with open(topology_file, 'w') as f3:
+            yaml.safe_dump(paths, f3)
+            print(f'Output written to {topology_file}')
 
 
 @cli.command('cfg')

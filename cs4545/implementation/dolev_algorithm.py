@@ -146,10 +146,10 @@ class DolevAlgorithm(DistributedAlgorithm):
             # if sender_id in self.neighbors_delivered[payload] and sender_id in payload.path.nodes:
             #     return
 
-            # Neighbor sent you empty path => They delivered message w/ payload.id
-            # Optimization MD.3
-            if not payload.path.nodes:
-                self.neighbors_delivered[payload].add(sender_id)
+            # # Neighbor sent you empty path => They delivered message w/ payload.id
+            # # Optimization MD.3
+            # if not payload.path.nodes:
+            #     self.neighbors_delivered[payload].add(sender_id)
 
             # If we delivered msg w/ payload.id previously, don't do anything anymore
             # Optimization MD.5
@@ -165,31 +165,31 @@ class DolevAlgorithm(DistributedAlgorithm):
             self.paths[payload].append(payload.path)
 
 
-            # Optimization MD.1
-            color = '\033[32m'
-            if "Tampered" in payload.content or "Malicious" in payload.content:
-                color = '\033[31m'
-            if payload.path.start in self.nodes and payload.path.start == sender_id:
-                if payload.content == "lol":
-                    print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
-                else:
-                    print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
-                self.delivered[payload] = True
-
-            # Check for f+1 disjoint paths
-            if Path.maximum_disjoint_set(self.paths[payload]) >= self.f + 1 and payload not in self.delivered:
-                if payload.content == "lol":
-                    print( color +
-                        f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
-                else:
-                    print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
-                self.delivered[payload] = True
+            # # Optimization MD.1
+            # color = '\033[32m'
+            # if "Tampered" in payload.content or "Malicious" in payload.content:
+            #     color = '\033[31m'
+            # if payload.path.start in self.nodes and payload.path.start == sender_id:
+            #     if payload.content == "lol":
+            #         print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
+            #     else:
+            #         print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
+            #     self.delivered[payload] = True
+            #
+            # # Check for f+1 disjoint paths
+            # if Path.maximum_disjoint_set(self.paths[payload]) >= self.f + 1 and payload not in self.delivered:
+            #     if payload.content == "lol":
+            #         print( color +
+            #             f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
+            #     else:
+            #         print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
+            #     self.delivered[payload] = True
 
             # Optimization MD.2
-            # if self.delivered.get(payload) is not None:
-            #     for neighbor_id, peer in self.nodes.items():
-            #         self.ez_send(peer, DolevMessage(payload.id, payload.content, Path(payload.path.start, [])))
-            #     return
+            if self.delivered.get(payload) is not None:
+                for neighbor_id, peer in self.nodes.items():
+                    self.ez_send(peer, DolevMessage(payload.id, payload.content, Path(payload.path.start, [])))
+                return
 
             # Broadcast message to all neighbors except the sender and those that have already delivered
             for neighbor_id, peer in self.nodes.items():
@@ -205,6 +205,31 @@ class DolevAlgorithm(DistributedAlgorithm):
                     rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path)
                     self.ez_send(peer, rebroadcast_msg)
                     # print(f"Current {self.node_id} Neighbor {neighbor_id}, Path {payload.path.nodes}")
+
+            # Neighbor sent you empty path => They delivered message w/ payload.id
+            # Optimization MD.3
+            if not payload.path.nodes:
+                self.neighbors_delivered[payload].add(sender_id)
+            # Optimization MD.1
+            color = '\033[32m'
+            if "Tampered" in payload.content or "Malicious" in payload.content:
+                color = '\033[31m'
+            if self.delivered.get(payload) is None and payload.path.start in self.nodes and payload.path.start == sender_id:
+                if payload.content == "lol":
+                    print(
+                        color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
+                else:
+                    print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
+                self.delivered[payload] = True
+
+            # Check for f+1 disjoint paths
+            if Path.maximum_disjoint_set(self.paths[payload]) >= self.f + 1 and payload not in self.delivered:
+                if payload.content == "lol":
+                    print(color +
+                          f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
+                else:
+                    print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
+                self.delivered[payload] = True
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
@@ -289,6 +314,7 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
     @override
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage):
+        print("Helloooo")
         number_neighbors = random.randint(0, len(self.nodes))
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
         for neighbor_id, neighbor_peer in selected_neighbors:
@@ -302,10 +328,11 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
             new_payload_content = payload.content
             new_id = payload.id
             new_start = payload.path.start
-
-            # if probability_to_fakely_deliver >= 0.5:
-            #     new_nodes = []
-            if probability_to_alter_path >= 0.01:
+            print("hello?")
+            if probability_to_fakely_deliver >= 0.2:
+                print("empty path from byzantine")
+                new_nodes = []
+            elif probability_to_alter_path >= 0.5:
                 alteration_choice = random.choice(['add_nodes', 'remove_nodes', 'shuffle_nodes', 'duplicate_nodes'])
                 # if alteration_choice == 'add_nodes':
                 #     num_nodes_to_add = random.randint(1, 3)
