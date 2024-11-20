@@ -164,6 +164,11 @@ class DolevAlgorithm(DistributedAlgorithm):
 
             self.paths[payload].append(payload.path)
 
+            # Neighbor sent you empty path => They delivered message w/ payload.id
+            # Optimization MD.3
+            if not payload.path.nodes:
+                self.neighbors_delivered[payload].add(sender_id)
+
 
             # # Optimization MD.1
             # color = '\033[32m'
@@ -206,10 +211,6 @@ class DolevAlgorithm(DistributedAlgorithm):
                     self.ez_send(peer, rebroadcast_msg)
                     # print(f"Current {self.node_id} Neighbor {neighbor_id}, Path {payload.path.nodes}")
 
-            # Neighbor sent you empty path => They delivered message w/ payload.id
-            # Optimization MD.3
-            if not payload.path.nodes:
-                self.neighbors_delivered[payload].add(sender_id)
             # Optimization MD.1
             color = '\033[32m'
             if "Tampered" in payload.content or "Malicious" in payload.content:
@@ -314,7 +315,7 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
     @override
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage):
-        print("Helloooo")
+        # print("Helloooo")
         number_neighbors = random.randint(0, len(self.nodes))
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
         for neighbor_id, neighbor_peer in selected_neighbors:
@@ -328,9 +329,9 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
             new_payload_content = payload.content
             new_id = payload.id
             new_start = payload.path.start
-            print("hello?")
+            # print("hello?")
             if probability_to_fakely_deliver >= 0.2:
-                print("empty path from byzantine")
+                # print("empty path from byzantine")
                 new_nodes = []
             elif probability_to_alter_path >= 0.5:
                 alteration_choice = random.choice(['add_nodes', 'remove_nodes', 'shuffle_nodes', 'duplicate_nodes'])
