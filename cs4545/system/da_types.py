@@ -204,7 +204,8 @@ class DistributedAlgorithm(Community):
     def save_node_stats(self):
         p = Path(self.stat_file)
         p.parent.mkdir(parents=True, exist_ok=True)
-        stats = {"messages_received": len(self._message_history), "bytes_sent": self._message_history.bytes_sent()}
+        stats = {"messages_received": len(self._message_history), "messages_sent": self._message_history.messages_sent(),
+                 "bytes_sent": self._message_history.bytes_sent(), "messages_dropped": self._message_history.messages_dropped()}
         # Save stats object as yaml
         with open(p, "w") as f:
             yaml.dump(stats, f)

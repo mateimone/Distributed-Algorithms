@@ -130,7 +130,7 @@ class DolevAlgorithm(DistributedAlgorithm):
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:
         try:
             # if self.node_id == 2:
-
+            self._message_history.receive_message()
             self.last_message_time = datetime.now()
 
             sender_id = self.node_id_from_peer(peer)

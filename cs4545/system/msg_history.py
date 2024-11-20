@@ -20,7 +20,7 @@ class MessageHistory:
         # print(f"Message sent to {destination}: {sizeof(message)}")
         self.__bytes_sent += sizeof(message)
     
-    def receieve_message(self):
+    def receive_message(self):
         self.__num_received += 1
 
     def get_history(self):
@@ -34,3 +34,9 @@ class MessageHistory:
     
     def bytes_sent(self):
         return self.__bytes_sent
+    
+    def messages_dropped(self):
+        return abs(self.__num_sent - self.__num_received)
+    
+    def messages_sent(self):
+        return self.__num_sent
