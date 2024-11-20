@@ -40,3 +40,6 @@ class MessageHistory:
     
     def messages_sent(self):
         return self.__num_sent
+
+    def messages_received(self):
+        return self.__num_received

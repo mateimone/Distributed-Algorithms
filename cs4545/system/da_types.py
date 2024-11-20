@@ -60,6 +60,7 @@ class DistributedAlgorithm(Community):
         self.nodes: Dict[int, Peer] = {}
         self.node_states: Dict[int, str] = {}
         self.add_message_handler(ConnectionMessage, self._on_manual_connect)
+        self.message_delivered_time: Dict[int, float] = {}
 
     def node_id_from_peer(self, peer: Peer):
         try:
@@ -204,8 +205,10 @@ class DistributedAlgorithm(Community):
     def save_node_stats(self):
         p = Path(self.stat_file)
         p.parent.mkdir(parents=True, exist_ok=True)
-        stats = {"messages_received": len(self._message_history), "messages_sent": self._message_history.messages_sent(),
-                 "bytes_sent": self._message_history.bytes_sent(), "messages_dropped": self._message_history.messages_dropped()}
+        stats = {"messages_received": self._message_history.messages_received(), "messages_sent": self._message_history.messages_sent(),
+                 "bytes_sent": self._message_history.bytes_sent(), "messages_dropped": self._message_history.messages_dropped(),
+                 "delivery_time": str(self.message_delivered_time)}
+
         # Save stats object as yaml
         with open(p, "w") as f:
             yaml.dump(stats, f)

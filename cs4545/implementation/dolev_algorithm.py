@@ -7,6 +7,7 @@ from collections import defaultdict
 import yaml
 import random
 import asyncio
+import time
 
 from typing import Set, List
 
@@ -55,6 +56,7 @@ class DolevMessage:
     id: str
     content: str
     path: Path
+    time: float
 
     def __hash__(self) -> int:
         return (self.id, self.content).__hash__()
@@ -102,7 +104,7 @@ class DolevAlgorithm(DistributedAlgorithm):
                 # Get unique id for a message
                 unique_id = generate_unique_id()
                 print(f"Node {self.node_id} is broadcasting message {unique_id}: {message}")
-                self.msg_to_broadcast.append(DolevMessage(unique_id, message, Path(self.node_id,[])))
+                self.msg_to_broadcast.append(DolevMessage(unique_id, message, Path(self.node_id,[]), time.time()))
 
         # If node has messages to deliver, then it is a starting node
         for message in self.msg_to_broadcast:
@@ -146,8 +148,8 @@ class DolevAlgorithm(DistributedAlgorithm):
             # if sender_id in self.neighbors_delivered[payload] and sender_id in payload.path.nodes:
             #     return
 
-            # # Neighbor sent you empty path => They delivered message w/ payload.id
-            # # Optimization MD.3
+            # Neighbor sent you empty path => They delivered message w/ payload.id
+            # Optimization MD.3
             # if not payload.path.nodes:
             #     self.neighbors_delivered[payload].add(sender_id)
 
@@ -169,59 +171,19 @@ class DolevAlgorithm(DistributedAlgorithm):
             if not payload.path.nodes:
                 self.neighbors_delivered[payload].add(sender_id)
 
-
-            # # Optimization MD.1
-            # color = '\033[32m'
-            # if "Tampered" in payload.content or "Malicious" in payload.content:
-            #     color = '\033[31m'
-            # if payload.path.start in self.nodes and payload.path.start == sender_id:
-            #     if payload.content == "lol":
-            #         print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
-            #     else:
-            #         print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
-            #     self.delivered[payload] = True
-            #
-            # # Check for f+1 disjoint paths
-            # if Path.maximum_disjoint_set(self.paths[payload]) >= self.f + 1 and payload not in self.delivered:
-            #     if payload.content == "lol":
-            #         print( color +
-            #             f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
-            #     else:
-            #         print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
-            #     self.delivered[payload] = True
-
-            # Optimization MD.2
-            if self.delivered.get(payload) is not None:
-                for neighbor_id, peer in self.nodes.items():
-                    self.ez_send(peer, DolevMessage(payload.id, payload.content, Path(payload.path.start, [])))
-                return
-
-            # Broadcast message to all neighbors except the sender and those that have already delivered
-            for neighbor_id, peer in self.nodes.items():
-                # print(f"Node: {self.node_id}, Neighbor: {neighbor_id}, Paths: {self.paths[payload]}")
-                # print(f"NEIGHBORS DELIVERED: {self.neighbors_delivered}")
-
-                # Do not send back to nodes who already received this message or neighbors that delivered
-                if neighbor_id not in payload.path.nodes and neighbor_id not in self.neighbors_delivered[payload]:
-                    delay = random_delay()
-                    # print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
-                    await asyncio.sleep(delay)
-                    # print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
-                    rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path)
-                    self.ez_send(peer, rebroadcast_msg)
-                    # print(f"Current {self.node_id} Neighbor {neighbor_id}, Path {payload.path.nodes}")
-
             # Optimization MD.1
             color = '\033[32m'
             if "Tampered" in payload.content or "Malicious" in payload.content:
                 color = '\033[31m'
-            if self.delivered.get(payload) is None and payload.path.start in self.nodes and payload.path.start == sender_id:
+            if self.delivered.get(
+                    payload) is None and payload.path.start in self.nodes and payload.path.start == sender_id:
                 if payload.content == "lol":
                     print(
                         color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}, {payload.path.nodes}.")
                 else:
                     print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
                 self.delivered[payload] = True
+                self.message_delivered_time[(payload.id, payload.content).__hash__()] = time.time() - payload.time
 
             # Check for f+1 disjoint paths
             if Path.maximum_disjoint_set(self.paths[payload]) >= self.f + 1 and payload not in self.delivered:
@@ -231,6 +193,28 @@ class DolevAlgorithm(DistributedAlgorithm):
                 else:
                     print(color + f"Node {self.node_id} Delivered message {payload.id}, {payload.content}.")
                 self.delivered[payload] = True
+                # if "Tampered"
+                self.message_delivered_time[(payload.id, payload.content).__hash__()] = time.time() - payload.time
+
+            # Optimization MD.2
+            # if self.delivered.get(payload) is True:
+            #     for neighbor_id, peer in self.nodes.items():
+            #         if neighbor_id not in self.neighbors_delivered[payload]:
+            #             self.ez_send(peer, DolevMessage(payload.id, payload.content, Path(payload.path.start, []),
+            #                                             payload.time))
+            #     return
+
+            # Broadcast message to all neighbors except the sender and those that have already delivered
+            for neighbor_id, peer in self.nodes.items():
+                # Do not send back to nodes who already received this message or neighbors that delivered
+                if neighbor_id not in payload.path.nodes and neighbor_id not in self.neighbors_delivered[payload] and neighbor_id != payload.path.start:
+                    delay = random_delay()
+                    # print(f"[Node {self.node_id}] Will wait for {delay:.2f} seconds before rebroadcasting message {payload.id} to {neighbor_id}.")
+                    await asyncio.sleep(delay)
+                    # print(f"[Node {self.node_id}] Rebroadcasting message {payload.id} to {neighbor_id}.")
+                    rebroadcast_msg = DolevMessage(payload.id, payload.content, payload.path, payload.time)
+                    self.ez_send(peer, rebroadcast_msg)
+                    # print(f"Current {self.node_id} Neighbor {neighbor_id}, Path {payload.path.nodes}")
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
@@ -262,7 +246,7 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
         print(f"Node {self.node_id} is maliciously starting the algorithm")
 
         # Broadcast message to neighbors
-        number_neighbors = random.randint(1, len(self.nodes))
+        number_neighbors = random.randint(0, len(self.nodes))
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
 
         print(f"Node {self.node_id} has chosen to send to {number_neighbors} neighbors.")
@@ -315,10 +299,11 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
     @override
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage):
-        # print("Helloooo")
-        number_neighbors = random.randint(0, len(self.nodes))
+        self.last_message_time = datetime.now()
+        print("Helloooo")
+        number_neighbors = random.randint(1, len(self.nodes))
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
-        for neighbor_id, neighbor_peer in selected_neighbors:
+        for neighbor_id, neighbor_peer in self.nodes.items():
             probability_to_fakely_deliver = random.uniform(0, 1)
             probability_to_alter_path = random.uniform(0, 1)
             probability_to_alter_content = random.uniform(0, 1)
@@ -330,10 +315,10 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
             new_id = payload.id
             new_start = payload.path.start
             # print("hello?")
-            if probability_to_fakely_deliver >= 0.2:
-                # print("empty path from byzantine")
+            if probability_to_fakely_deliver >= 0.001:
+                print("empty path from byzantine")
                 new_nodes = []
-            elif probability_to_alter_path >= 0.5:
+            elif probability_to_alter_path >= 0.05:
                 alteration_choice = random.choice(['add_nodes', 'remove_nodes', 'shuffle_nodes', 'duplicate_nodes'])
                 # if alteration_choice == 'add_nodes':
                 #     num_nodes_to_add = random.randint(1, 3)
@@ -359,21 +344,21 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
                 #             insertion_index = random.randint(0, len(new_nodes))
                 #             new_nodes.insert(insertion_index, node_to_duplicate)
 
-            new_nodes.append(self.node_id)
+            # new_nodes.append(self.node_id)
 
-            if probability_to_alter_content >= 0.01:
+            if probability_to_alter_content >= 0.05:
                 random_content_number = random.randint(0, 100000)
                 new_payload_content = f"Tampered content {str(random_content_number)}"
 
-            if probability_to_alter_id >= 0.01:
+            if probability_to_alter_id >= 0.0005:
                 new_id = uuid.uuid4().hex
 
-            if probability_to_alter_start >= 0.01:
+            if probability_to_alter_start >= 0.05:
                 new_start = random.sample(self.correct_nodes, 1)[0]
 
             new_path = Path(new_start, new_nodes)
 
-            new_payload = DolevMessage(new_id, new_payload_content, new_path)
+            new_payload = DolevMessage(new_id, new_payload_content, new_path, payload.time)
 
             # print(f"Original Payload: {payload}")
             # print(f"Altered Payload: {new_payload}")
