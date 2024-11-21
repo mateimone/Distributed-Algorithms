@@ -16,7 +16,7 @@ def load_algorithm(alg_name: str, location = 'cs4545'):
         raise e
 
 
-async def start_communities(node_id, connections, algorithm, use_localhost=True) -> None:
+async def start_communities(node_id, connections, algorithm, use_localhost=True, starting_node=0) -> None:
     event = create_event_with_signals()
     base_port = 9090
     connections_updated = [(x, base_port + x) for x in connections]
@@ -37,7 +37,7 @@ async def start_communities(node_id, connections, algorithm, use_localhost=True)
         [],
         [],
         {},
-        [("started", node_id, connections_updated, event, use_localhost)],
+        [("started", node_id, connections_updated, event, use_localhost, starting_node)],
     )
     ipv8_instance = IPv8(
         builder.finalize(), extra_communities={"DA_Alg_Test": algorithm}
@@ -67,4 +67,4 @@ if __name__ == "__main__":
         topology = yaml.safe_load(f)
         connections = topology[node_id]
 
-        run(start_communities(node_id, connections, alg, not args.docker))
+        run(start_communities(node_id, connections, alg, not args.docker, 0))
