@@ -147,8 +147,8 @@ class DolevAlgorithm(DistributedAlgorithm):
                 if n_delivered in newpath.nodes:
                     return
 
-            # Neighbor sent you empty path => They delivered message w/ payload.id
-            # Optimization MD.3
+            # # Neighbor sent you empty path => They delivered message w/ payload.id
+            # # Optimization MD.3
             if len(newpath.nodes) == 1 and newpath.nodes[0] == sender_id:
                 self.neighbors_delivered[payload].add(sender_id)
                 if newpath.start == sender_id: # MD1
@@ -157,6 +157,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             # Check for f+1 disjoint paths
             if Path.maximum_disjoint_set(self.paths[payload]) >= self.f + 1 and payload not in self.delivered:
                 self.delivered[payload] = True
+                # print(f"[Delivered] {payload.content} at {time.time() - payload.time}")
 
             # Broadcast message to all neighbors except the sender and those that have already delivered
             for neighbor_id, peer in self.nodes.items():
@@ -208,7 +209,7 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
         print(f"Node {self.node_id} is maliciously starting the algorithm")
 
         # Broadcast message to neighbors
-        number_neighbors = random.randint(0, 2)
+        number_neighbors = random.randint(0, len(self.nodes))
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
 
         print(f"Node {self.node_id} has chosen to send to {number_neighbors} neighbors.")
@@ -257,14 +258,14 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
                     removed_node = random.choice(new_nodes)
                     new_nodes.remove(removed_node)
 
-            new_path = Path(new_start, new_nodes)
-            new_payload = DolevMessage(payload.id, new_payload_content, new_path, payload.time)
+        new_path = Path(new_start, new_nodes)
+        new_payload = DolevMessage(payload.id, new_payload_content, new_path, payload.time)
 
-            print(f"Original Payload: {payload}")
-            print(f"Altered Payload: {new_payload}")
+        print(f"Original Payload: {payload}")
+        print(f"Altered Payload: {new_payload}")
 
-            for neighbor_id, peer in self.nodes.items():
-                self.ez_send(peer, new_payload)
+        for neighbor_id, peer in self.nodes.items():
+            self.ez_send(peer, new_payload)
 
     # @override
     # @message_wrapper(DolevMessage)
@@ -352,3 +353,4 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
     #         # print(id(new_payload))
     #
     #         self.ez_send(neighbor_peer, new_payload)
+
