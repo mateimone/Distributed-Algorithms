@@ -4,9 +4,7 @@
     - "Message example 1"
 
 1:
-  type: "byzantine"
-  messages:
-    - "Malicious message 1"
+  type: "dolev"
 
 2:
   type: "byzantine"
@@ -14,15 +12,10 @@
     - "Message malicious 2"
 
 3:
-  type: "byzantine"
-  messages:
-    - "Message malicious 3"
+  type: "dolev"
 
 4:
   type: "dolev"
-  messages:
-    - "Message example 2"
-    - "Message example 3"
 
 5:
   type: "dolev"
@@ -34,7 +27,4 @@
   type: "dolev"
 
 8:
-  type: "dolev"
-
-9:
   type: "dolev"

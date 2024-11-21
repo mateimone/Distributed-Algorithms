@@ -4,7 +4,7 @@ x-common-variables: &common-variables
   TOPOLOGY: "topologies/ring.yaml"
   SCENARIO: "scenarios/scenario1.yaml"
   EMPTY: null # In case there are no listed common-variables
-  F: 3
+  F: 1
 
 services:
   node0:

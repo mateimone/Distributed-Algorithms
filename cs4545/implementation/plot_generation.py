@@ -29,6 +29,8 @@ def load_total_messages_received(num_nodes):
 def calculate_latency(num_nodes, id_byzantine_nodes):
     latency = 0
     l = 0
+    max_value = 0
+
     for i in range(num_nodes):
         if i in id_byzantine_nodes:
             continue
@@ -42,12 +44,13 @@ def calculate_latency(num_nodes, id_byzantine_nodes):
 
             if isinstance(delivery_time_dict, dict) and len(delivery_time_dict) > 0:
                 max_value = max(delivery_time_dict.values())
-            else:
-                max_value = 0
+            #else:
+            #    max_value = 0
 
-            l += max_value
+            # l += max_value
 
-    latency = l / (num_nodes - len(id_byzantine_nodes))
+    # latency = l / (num_nodes - len(id_byzantine_nodes))
+    latency = max_value
     return latency
 
 def calculate_num_broadcasts_and_starting_nodes(scenario, id_byzantine_nodes):
@@ -83,10 +86,6 @@ def load_number_of_nodes(script):
     else:
         raise ValueError(f'Could not find number of nodes in {script}')
 
-# Use the csv data from experiments file to plot
-def plot_results(latencies, message_counts):
-    pass
-
 @click.group()
 def cli():
     pass
@@ -120,7 +119,7 @@ def aggregate(topology_file, output):
     }
 
     df = None
-    experiment_file = "../experiments/current.csv"
+    experiment_file = "../experiments/experiment2.csv"
     if os.path.exists(experiment_file) and os.path.getsize(experiment_file) > 0:
         df = pd.read_csv(experiment_file)
     else:
@@ -130,6 +129,36 @@ def aggregate(topology_file, output):
     df = pd.concat([df, new_row], ignore_index=True)
 
     df.to_csv(experiment_file, index=False)
+
+
+@cli.command("plot")
+@click.option("--experiment_file", default="../experiments/experiment2.csv")
+@click.option("--output", default="../experiments")
+def plot(experiment_file, output):
+    df = pd.read_csv(experiment_file)
+    df_filtered = df[df['broadcasts'] == 1]
+    df_filtered = df_filtered.sort_values(by='n')
+
+    network_size = df_filtered['n']
+    message_complexity = df_filtered['message_complexity']
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(network_size, message_complexity, marker='o', color='red', label=f"F=1, Broadcasts=1, Network Connectivity=3")
+
+    plt.yscale('log')
+
+    plt.xlabel("Network Size", fontsize=12)
+    plt.ylabel("Message Complexity", fontsize=12)
+    plt.title("Message Complexity vs Network Size", fontsize=14)
+
+    plt.grid(True, which="both", linestyle='--', linewidth=0.5)
+    plt.legend()
+
+    output_file = os.path.join(output, "message_complexity_vs_network_size.png")
+    plt.savefig(output_file)
+
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     cli()
