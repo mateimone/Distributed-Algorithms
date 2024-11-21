@@ -50,22 +50,22 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, con
             n['environment']['ALGORITHM'] = node_instructions[i]["type"]
             n['environment']['LOCATION'] = location
             nodes[f'node{i}'] = n
-            paths[i] = [(i + 1) % num_nodes, (i - 1) % num_nodes]
+            # paths[i] = [(i + 1) % num_nodes, (i - 1) % num_nodes]
             # paths[i] = []
 
-        for i in range(num_nodes):
-            while len(paths[i]) < connected:
-                valid_paths = []
-                for node in range(num_nodes):
-                    if node != i and len(paths[node]) <= connected and node not in paths[i]:
-                        valid_paths.append(node)
-
-                if valid_paths == []:
-                    break
-
-                new_path = random.choice(valid_paths)
-                paths[i].append(new_path)
-                paths[new_path].append(i)
+        # for i in range(num_nodes):
+        #     while len(paths[i]) < connected:
+        #         valid_paths = []
+        #         for node in range(num_nodes):
+        #             if node != i and len(paths[node]) <= connected and node not in paths[i]:
+        #                 valid_paths.append(node)
+        #
+        #         if valid_paths == []:
+        #             break
+        #
+        #         new_path = random.choice(valid_paths)
+        #         paths[i].append(new_path)
+        #         paths[new_path].append(i)
 
         content['services'] = nodes
 
@@ -73,9 +73,9 @@ def prepare_compose_file(num_nodes, topology_file, algorithm, template_file, con
             yaml.safe_dump(content, f2)
             print(f'Output written to docker-compose.yml')
 
-        with open(topology_file, 'w') as f3:
-            yaml.safe_dump(paths, f3)
-            print(f'Output written to {topology_file}')
+        # with open(topology_file, 'w') as f3:
+        #     yaml.safe_dump(paths, f3)
+        #     print(f'Output written to {topology_file}')
 
 
 @cli.command('cfg')
