@@ -8,3 +8,4 @@ n,f,starting_nodes,message_complexity,broadcasts,latency,network_connectivity
 5.0,1,1,55,1,4.5577239990234375,3
 13.0,1,1,245,1,8.379245042800903,3
 9.0,1,1,75,1,3.64140248298645,3
+9.0,2,2,535,2,3.64140248298645,4
