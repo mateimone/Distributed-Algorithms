@@ -264,7 +264,10 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
         print(f"Original Payload: {payload}")
         print(f"Altered Payload: {new_payload}")
 
-        for neighbor_id, peer in self.nodes.items():
+        number_neighbors = random.randint(0, len(self.nodes) - 1)
+        selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
+
+        for neighbor_id, peer in selected_neighbors:
             self.ez_send(peer, new_payload)
 
     # @override

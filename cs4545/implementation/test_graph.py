@@ -20,7 +20,8 @@ def get_connectivity():
         for neighbor in neighbors:
             G.add_edge(int(node), int(neighbor))
 
-    return nx.edge_connectivity(G)
+    print(nx.node_connectivity(G))
+    return nx.node_connectivity(G)
 
 # is_connected = nx.is_connected(G)
 # print(f"Is the graph connected? {is_connected}")
