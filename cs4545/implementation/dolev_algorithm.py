@@ -209,7 +209,7 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
         print(f"Node {self.node_id} is maliciously starting the algorithm")
 
         # Broadcast message to neighbors
-        number_neighbors = random.randint(0, len(self.nodes))
+        number_neighbors = random.randint(0, len(self.nodes) - 1)
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
 
         print(f"Node {self.node_id} has chosen to send to {number_neighbors} neighbors.")
