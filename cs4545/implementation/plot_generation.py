@@ -40,14 +40,30 @@ def calculate_latency(num_nodes, id_byzantine_nodes):
             delivery_time = data['delivery_time']
             delivery_time_dict = ast.literal_eval(delivery_time)
 
-            if isinstance(delivery_time_dict, dict):
+            if isinstance(delivery_time_dict, dict) and len(delivery_time_dict) > 0:
                 max_value = max(delivery_time_dict.values())
+            else:
+                max_value = 0
 
             l += max_value
 
     latency = l / (num_nodes - len(id_byzantine_nodes))
     return latency
 
+def calculate_num_broadcasts_and_starting_nodes(scenario, id_byzantine_nodes):
+    num_broadcasts_correct_nodes = 0
+    num_broadcasts_f_nodes = 0
+    start_nodes = 0
+
+    for id, node in scenario.items():
+        if 'messages' in node:
+            if id in id_byzantine_nodes:
+                num_broadcasts_f_nodes += len(node['messages'])
+            else:
+                start_nodes += 1
+                num_broadcasts_correct_nodes += len(node['messages'])
+
+    return num_broadcasts_correct_nodes, num_broadcasts_f_nodes, start_nodes
 
 def load_byzantine_nodes(scenario):
     num = 0
@@ -67,6 +83,7 @@ def load_number_of_nodes(script):
     else:
         raise ValueError(f'Could not find number of nodes in {script}')
 
+# Use the csv data from experiments file to plot
 def plot_results(latencies, message_counts):
     pass
 
@@ -89,12 +106,15 @@ def aggregate(topology_file, output):
     message_complexity = load_total_messages_received(num_nodes)
     latency = calculate_latency(num_nodes, id_byzantine_nodes)
     network_connectivity = get_connectivity()
+    num_broadcasts_correct_nodes, num_broadcasts_f_nodes, starting_nodes = calculate_num_broadcasts_and_starting_nodes(scenario, id_byzantine_nodes)
 
     # save stats
     run_stats = {
         "n": num_nodes,
-        "message_complexity": message_complexity,
         "f": f,
+        "starting_nodes": starting_nodes,
+        "message_complexity": message_complexity,
+        "broadcasts": num_broadcasts_correct_nodes,
         "latency": latency,
         "network_connectivity": network_connectivity,
     }
@@ -104,7 +124,7 @@ def aggregate(topology_file, output):
     if os.path.exists(experiment_file) and os.path.getsize(experiment_file) > 0:
         df = pd.read_csv(experiment_file)
     else:
-        df = pd.DataFrame(columns=['n', 'f', 'message_complexity', 'latency', 'network_connectivity'])
+        df = pd.DataFrame(columns=['n', 'f', 'starting_nodes', 'message_complexity', 'broadcasts', 'latency', 'network_connectivity'])
 
     new_row = pd.DataFrame([run_stats])
     df = pd.concat([df, new_row], ignore_index=True)
