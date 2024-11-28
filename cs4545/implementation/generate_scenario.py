@@ -2,6 +2,7 @@ import yaml
 import random
 import sys
 
+
 def generate_nodes_config(total_nodes, num_dolev, num_byzantine, output_file='nodes_config.yaml'):
     if num_dolev + num_byzantine > total_nodes:
         print("Error: The sum of 'dolev' and 'byzantine' nodes exceeds the total number of nodes.")
