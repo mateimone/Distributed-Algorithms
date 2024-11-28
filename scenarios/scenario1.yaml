@@ -1,32 +1,33 @@
 0:
-  type: "dolev"
+  type: "bracha"
   messages:
     - "Message example 1"
 
 1:
-  type: "dolev"
+  type: "bracha"
   messages:
     - "Message example 2"
 
 2:
-  type: "byzantine"
-  messages:
-    - "Message malicious 1"
+  type: "bracha"
 
 3:
-  type: "byzantine"
+  type: "bracha"
 
 4:
-  type: "dolev"
+  type: "bracha"
 
 5:
-  type: "dolev"
+  type: "bracha"
 
 6:
-  type: "dolev"
+  type: "bracha"
 
 7:
-  type: "dolev"
+  type: "bracha"
 
 8:
-  type: "dolev"
+  type: "bracha"
+
+9:
+  type: "bracha"
