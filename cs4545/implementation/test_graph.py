@@ -22,7 +22,7 @@ def get_connectivity():
 
     print(nx.node_connectivity(G))
     return nx.node_connectivity(G)
-
+get_connectivity()
 # is_connected = nx.is_connected(G)
 # print(f"Is the graph connected? {is_connected}")
 #

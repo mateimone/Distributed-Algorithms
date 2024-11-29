@@ -1,4 +1,5 @@
 from .bracha_algorithm import *
+from .dolev_algorithm import DolevAlgorithm, ByzantineDolevAlgorithm
 # from .dolev_algorithm import *
 from .echo_algorithm import *
 from .ring_election import *
@@ -14,11 +15,11 @@ def get_algorithm(name):
     #     return DolevAlgorithm
     elif name == "crash":
         return CrashAlgorithm
-    # elif name == "byzantine":
-    #     return ByzantineDolevAlgorithm
-    elif name == "bracha":
-        return BrachaAlgorithm
     elif name == "byzantine":
-        return ByzantineBrachaAlgorithm
+        return ByzantineDolevAlgorithm
+    elif name == "bracha":
+        return DolevAlgorithm
+    # elif name == "byzantine":
+    #     return ByzantineBrachaAlgorithm
     else:
         raise ValueError(f"Unknown algorithm: {name}")
