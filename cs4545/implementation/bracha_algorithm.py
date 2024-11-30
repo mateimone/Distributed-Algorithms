@@ -1,8 +1,9 @@
 import os
+import math
 from collections import defaultdict
 from datetime import datetime, time
-
-from cs4545.implementation import DolevAlgorithm, Message
+from typing import Set, List
+from .dolev_algorithm import DolevAlgorithm, Message, Path
 from cs4545.system.da_types import *
 
 class BrachaAlgorithm(DolevAlgorithm):
@@ -13,14 +14,14 @@ class BrachaAlgorithm(DolevAlgorithm):
         self.sent_ready: Dict[Message, bool] = defaultdict(bool)
         self.sent_echo: Dict[Message, bool] = defaultdict(bool)
         self.brb_delivered: Dict[Message, bool] = defaultdict(bool)
-        self.echos = []
-        self.readys = []
+        self.echos: Dict[Message, Set[int]] = defaultdict(set)      # for each m, store list of nodes which sent you echo
+        self.readys: Dict[Message, Set[int]] = defaultdict(set)
 
     async def on_start(self):
         await super().on_start()
 
     def on_broadcast(self, message: Message):
-        super().on_broadcast(self, message)
+        super().on_broadcast(message)
 
 
     # Callback function called from Dolev whenever a message of the corresponding type was delivered
@@ -32,16 +33,18 @@ class BrachaAlgorithm(DolevAlgorithm):
             self.sent_echo[msg] = True
             self.on_broadcast(self.create_message(msg, "echo"))
         if msg.type == "echo":
-            self.echos.append(msg.path.nodes[-1])
+            self.echos[msg].add(msg.path.start)
         if msg.type == "ready":
-            self.readys.append(msg.path.nodes[-1])
+            self.readys[msg].add(msg.path.start)
 
+        print(self.echos)
+        print(self.readys)
         self.handle_echo_message(msg)
         self.handle_ready_amplification(msg)
         self.handle_ready_delivery(msg)
 
     def handle_echo_message(self, msg: Message):
-        if len(self.echos) >= (self.n + self.f + 1) / 2 and msg not in self.sent_ready:
+        if len(self.echos) >= math.ceil((self.n + self.f + 1) / 2) and msg not in self.sent_ready:
             self.sent_ready[msg] = True
             self.on_broadcast(self.create_message(msg, "ready"))
 
@@ -54,9 +57,6 @@ class BrachaAlgorithm(DolevAlgorithm):
         if len(self.readys) >= 2 * self.f + 1 and msg not in self.brb_delivered:
             self.brb_delivered[msg] = True
             print(f"[Delivered Ready] {msg.content} at {time.time() - msg.time}")
-
-    def create_message(m: Message, t: str):
-        return Message(m.id, m.content, m.path, m.time, t)
 
     async def monitor_inactivity(self):
         await super().monitor_inactivity()

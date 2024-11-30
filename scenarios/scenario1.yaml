@@ -5,8 +5,6 @@
 
 1:
   type: "bracha"
-  messages:
-    - "Message example 2"
 
 2:
   type: "bracha"

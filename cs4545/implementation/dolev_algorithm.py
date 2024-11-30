@@ -109,7 +109,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         await asyncio.create_task(self.monitor_inactivity())
 
     def on_broadcast(self, message: Message):
-        print(f"Node {self.node_id} is starting the algorithm")
+        print(f"Node {self.node_id} is relaying message {message.content} with type {message.type}")
 
         # Broadcast message to neighbors
         for neighbor_id, peer in self.nodes.items():
@@ -179,6 +179,9 @@ class DolevAlgorithm(DistributedAlgorithm):
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
+
+    def create_message(self, m: Message, t: str):
+        return Message(m.id, m.content, Path(self.node_id, []), m.time, t)
 
     async def monitor_inactivity(self):
         inactivity_threshold = 10  # In seconds
