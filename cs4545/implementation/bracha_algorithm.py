@@ -11,6 +11,7 @@ from .dolev_algorithm import DolevAlgorithm, DolevMessage
 from .dolev_algorithm import Path as CustomPath
 from cs4545.system.da_types import *
 
+
 @dataclass(msg_id=5)
 class BrachaMessage:
     id: str
@@ -24,26 +25,31 @@ class BrachaMessage:
     def __eq__(self, other) -> bool:
         return self.id == other.id and self.content == other.content
 
+
 def generate_unique_id():
     return uuid.uuid4().hex
 
+
 def random_delay(min_delay: float = 0.1, max_delay: float = 1.0) -> float:
     return random.uniform(min_delay, max_delay)
+
 
 class BrachaAlgorithm(DolevAlgorithm):
 
     def __init__(self, settings: CommunitySettings) -> None:
         super().__init__(settings)
-        self.n = int (os.environ.get("N"))                                # nr of nodes in the network
-        self.opt1 = int (os.environ.get("OPT1"))                          # is opt1 turned on (1) or off (0)
-        self.opt2 = int (os.environ.get("OPT2"))
-        self.opt3 = int (os.environ.get("OPT3"))
+        self.n = int(os.environ.get("N"))  # nr of nodes in the network
+        self.opt1 = int(os.environ.get("OPT1"))  # is opt1 turned on (1) or off (0)
+        self.opt2 = int(os.environ.get("OPT2"))
+        self.opt3 = int(os.environ.get("OPT3"))
+        self.add_message_handler(BrachaMessage, self.on_send_hop)
         self.sent_ready: Dict[BrachaMessage, bool] = defaultdict(bool)
         self.sent_echo: Dict[BrachaMessage, bool] = defaultdict(bool)
         self.brb_delivered: Dict[BrachaMessage, bool] = defaultdict(bool)
-        self.echos: Dict[BrachaMessage, Set[int]] = defaultdict(set)      # for each msg, store list of nodes which sent you echo
+        self.echos: Dict[BrachaMessage, Set[int]] = defaultdict(
+            set)  # for each msg, store list of nodes which sent you echo
         self.readys: Dict[BrachaMessage, Set[int]] = defaultdict(set)
-        self.brb_broadcast: List[BrachaMessage] = []                      # list of msg to broadcast for starting nodes
+        self.brb_broadcast: List[BrachaMessage] = []  # list of msg to broadcast for starting nodes
 
     async def on_start(self):
         instruction = self.instructions[self.node_id]
@@ -58,7 +64,10 @@ class BrachaAlgorithm(DolevAlgorithm):
 
         # If node has messages to deliver, then it is a starting node
         for message in self.brb_broadcast:
-            self.broadcast(message)
+            if self.opt2 == 1:  # single hop send messages
+                self.single_hop_send_message(message)
+            else:
+                self.broadcast(message) # use dolev broadcast
 
         # Start monitoring for inactivity
         await asyncio.create_task(self.monitor_inactivity())
@@ -67,6 +76,19 @@ class BrachaAlgorithm(DolevAlgorithm):
     def broadcast(self, message: BrachaMessage):
         string_to_broadcast = json.dumps(message.__dict__)
         super().on_broadcast_string(string_to_broadcast)
+
+    # OPT2
+    def single_hop_send_message(self, msg: BrachaMessage):
+        for neighbor_id, peer in self.nodes.items():
+            delay = random_delay()
+            time.sleep(delay)
+            self.ez_send(peer, msg)
+
+    # Wrapper for OPT2
+    @message_wrapper(BrachaMessage)
+    async def on_send_hop(self, peer: Peer, msg: BrachaMessage) -> None:
+        if self.opt2 == 1:
+            self.send_echo(msg)  # continue protocol
 
     # Callback function called from Dolev whenever a message of the corresponding type was delivered
     def receive_message(self, content: str, start_node: int):
@@ -78,11 +100,13 @@ class BrachaAlgorithm(DolevAlgorithm):
 
         if brb_content.type == "send" and brb_content not in self.sent_echo:
             self.send_echo(brb_content)
+
         if brb_content.type == "echo":
             self.echos[brb_content].add(start_node)
             self.handle_echo_message(brb_content)
             if self.opt1 == 1:
                 self.handle_echo_amplification(brb_content)
+
         if brb_content.type == "ready":
             self.readys[brb_content].add(start_node)
             self.handle_ready_amplification(brb_content)
