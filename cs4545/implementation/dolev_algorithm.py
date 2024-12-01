@@ -125,6 +125,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             self.ez_send(peer, message)
 
         self.delivered[message] = True
+        self.receive_message(msg, self.node_id) # deliver to yourself when broadcasting
 
     @message_wrapper(DolevMessage)
     async def on_message(self, peer: Peer, payload: DolevMessage) -> None:
@@ -173,7 +174,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             # Optimization MD.2
             if payload in self.delivered:
                 self.message_delivered_time[(payload.id, payload.content).__hash__()] = time.time() - payload.time
-                print(f"[Delivered] {payload.content} at {time.time() - payload.time}")
+                # print(f"[Delivered] {payload.content} at {time.time() - payload.time}")
 
                 # Brb
                 self.receive_message(payload.content, payload.path.start)
@@ -267,8 +268,8 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
         new_path = Path(new_start, new_nodes)
         new_payload = DolevMessage(payload.id, new_payload_content, new_path, payload.time)
 
-        print(f"Original Payload: {payload}")
-        print(f"Altered Payload: {new_payload}")
+        # print(f"Original Payload: {payload}")
+        # print(f"Altered Payload: {new_payload}")
 
         number_neighbors = random.randint(0, len(self.nodes) - 1)
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)

@@ -5,7 +5,7 @@ x-common-variables: &common-variables
   SCENARIO: "scenarios/scenario1.yaml"
   EMPTY: null # In case there are no listed common-variables
   F: 1
-  N: 10
+  N: 4
 
 services:
   node0:

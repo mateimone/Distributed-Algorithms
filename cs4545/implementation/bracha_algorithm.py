@@ -3,7 +3,8 @@ import os
 import math
 import uuid
 from collections import defaultdict
-from datetime import datetime, time
+from datetime import datetime
+import time
 from typing import Set
 from .dolev_algorithm import DolevAlgorithm
 from cs4545.system.da_types import *
@@ -16,10 +17,10 @@ class BrachaMessage:
     type: str
 
     def __hash__(self) -> int:
-        return (self.id, self.content, self.type).__hash__()
+        return (self.id, self.content).__hash__()
 
     def __eq__(self, other) -> bool:
-        return self.id == other.id and self.content == other.content and self.type == other.type
+        return self.id == other.id and self.content == other.content
 
 def generate_unique_id():
     return uuid.uuid4().hex
@@ -66,35 +67,31 @@ class BrachaAlgorithm(DolevAlgorithm):
 
         # Parse content
         brb_content: BrachaMessage = self.parse_json_message(content)
-
         if brb_content.type == "send" and brb_content not in self.sent_echo:
             self.sent_echo[brb_content] = True
             self.broadcast(self.create_message(brb_content, "echo"))
         if brb_content.type == "echo":
             self.echos[brb_content].add(start_node)
+            self.handle_echo_message(brb_content)
         if brb_content.type == "ready":
             self.readys[brb_content].add(start_node)
-
-        print(self.echos)
-        print(self.readys)
-        self.handle_echo_message(brb_content)
-        self.handle_ready_amplification(brb_content)
-        self.handle_ready_delivery(brb_content)
+            self.handle_ready_amplification(brb_content)
+            self.handle_ready_delivery(brb_content)
 
     def handle_echo_message(self, msg: BrachaMessage):
-        if len(self.echos) >= math.ceil((self.n + self.f + 1) / 2) and msg not in self.sent_ready:
+        if len(self.echos[msg]) >= math.ceil((self.n + self.f + 1) / 2) and self.sent_ready[msg] == False:
             self.sent_ready[msg] = True
             self.broadcast(self.create_message(msg, "ready"))
 
     def handle_ready_amplification(self, msg: BrachaMessage):
-        if len(self.readys) >= self.f + 1 and msg not in self.sent_ready:
+        if len(self.readys[msg]) >= self.f + 1 and self.sent_ready[msg] == False:
             self.sent_ready[msg] = True
             self.broadcast(self.create_message(msg, "ready"))
 
     def handle_ready_delivery(self, msg: BrachaMessage):
-        if len(self.readys) >= 2 * self.f + 1 and msg not in self.brb_delivered:
+        if len(self.readys[msg]) >= 2 * self.f + 1 and self.brb_delivered[msg] == False:
             self.brb_delivered[msg] = True
-            print(f"[Delivered Ready] {msg.content} at {time.time() - msg.time}")
+            print(f"[BRB Delivered] {msg.content} at {time.time() - msg.time}")
 
     def parse_json_message(self, message: str):
         msg = json.loads(message)
