@@ -17,6 +17,6 @@ def get_algorithm(name):
     elif name == "crash":
         return CrashAlgorithm
     elif name == "byzantine":
-        return ByzantineDolevAlgorithm
+        return ByzantineBrachaAlgorithm
     else:
         raise ValueError(f"Unknown algorithm: {name}")

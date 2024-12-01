@@ -6,7 +6,9 @@ from collections import defaultdict
 from datetime import datetime
 import time
 from typing import Set
-from .dolev_algorithm import DolevAlgorithm
+from typing_extensions import override
+from .dolev_algorithm import DolevAlgorithm, DolevMessage
+from .dolev_algorithm import Path as CustomPath
 from cs4545.system.da_types import *
 
 @dataclass(msg_id=5)
@@ -25,11 +27,17 @@ class BrachaMessage:
 def generate_unique_id():
     return uuid.uuid4().hex
 
+def random_delay(min_delay: float = 0.1, max_delay: float = 1.0) -> float:
+    return random.uniform(min_delay, max_delay)
+
 class BrachaAlgorithm(DolevAlgorithm):
 
     def __init__(self, settings: CommunitySettings) -> None:
         super().__init__(settings)
         self.n = int (os.environ.get("N"))                                # nr of nodes in the network
+        self.opt1 = int (os.environ.get("OPT1"))                          # is opt1 turned on (1) or off (0)
+        self.opt2 = int (os.environ.get("OPT2"))
+        self.opt3 = int (os.environ.get("OPT3"))
         self.sent_ready: Dict[BrachaMessage, bool] = defaultdict(bool)
         self.sent_echo: Dict[BrachaMessage, bool] = defaultdict(bool)
         self.brb_delivered: Dict[BrachaMessage, bool] = defaultdict(bool)
@@ -67,21 +75,39 @@ class BrachaAlgorithm(DolevAlgorithm):
 
         # Parse content
         brb_content: BrachaMessage = self.parse_json_message(content)
+
         if brb_content.type == "send" and brb_content not in self.sent_echo:
-            self.sent_echo[brb_content] = True
-            self.broadcast(self.create_message(brb_content, "echo"))
+            self.send_echo(brb_content)
         if brb_content.type == "echo":
             self.echos[brb_content].add(start_node)
             self.handle_echo_message(brb_content)
+            if self.opt1 == 1:
+                self.handle_echo_amplification(brb_content)
         if brb_content.type == "ready":
             self.readys[brb_content].add(start_node)
             self.handle_ready_amplification(brb_content)
             self.handle_ready_delivery(brb_content)
+            if self.opt1 == 1:
+                self.accelerate_echo_delivery(brb_content)
+
+    def send_echo(self, msg: BrachaMessage):
+        self.sent_echo[msg] = True
+        self.broadcast(self.create_message(msg, "echo"))
 
     def handle_echo_message(self, msg: BrachaMessage):
         if len(self.echos[msg]) >= math.ceil((self.n + self.f + 1) / 2) and self.sent_ready[msg] == False:
             self.sent_ready[msg] = True
             self.broadcast(self.create_message(msg, "ready"))
+
+    # Part of OPT1
+    def handle_echo_amplification(self, msg: BrachaMessage):
+        if len(self.echos[msg]) >= self.f + 1 and self.sent_echo[msg] == False:
+            self.send_echo(msg)
+
+    # Second part of OPT1
+    def accelerate_echo_delivery(self, msg: BrachaMessage):
+        if self.sent_ready[msg] == True and self.sent_echo[msg] == False:
+            self.send_echo(msg)
 
     def handle_ready_amplification(self, msg: BrachaMessage):
         if len(self.readys[msg]) >= self.f + 1 and self.sent_ready[msg] == False:
@@ -103,3 +129,51 @@ class BrachaAlgorithm(DolevAlgorithm):
     async def monitor_inactivity(self):
         await super().monitor_inactivity()
 
+
+class ByzantineBrachaAlgorithm(BrachaAlgorithm):
+
+    def __init__(self, settings: CommunitySettings) -> None:
+        super().__init__(settings)
+
+    async def on_start(self):
+        await super().on_start()
+
+    def broadcast(self, message: BrachaMessage):
+        string_to_broadcast = json.dumps(message.__dict__)
+        self.on_broadcast_string(string_to_broadcast)
+
+    @override
+    def on_broadcast_string(self, msg: str):
+        message = DolevMessage(generate_unique_id(), msg, CustomPath(self.node_id, []), time.time())
+
+        number_neighbors = random.randint(0, len(self.nodes) - 1)
+        selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
+
+        for neighbor_id, peer in selected_neighbors:
+            delay = random_delay()
+            time.sleep(delay)
+            self.ez_send(peer, message)
+
+        self.delivered[message] = True
+        self.receive_message(msg, self.node_id)  # deliver to yourself when broadcasting
+
+    @override
+    def receive_message(self, content: str, start_node: int):
+        brb_content: BrachaMessage = self.parse_json_message(content)
+        modified_msg = brb_content.content
+        new_start = start_node
+
+        actions = ["skip", "empty path", "alter content", "alter start", "shuffle path", "remove nodes"]
+        action = random.choice(actions)
+
+        if action == "skip":
+            return
+        if action == "alter content":
+            random_content_number = random.randint(0, 1000)
+            modified_msg = f"Tampered content {str(random_content_number)}"
+        if action == "alter start":
+            new_start = random.randint(0, len(self.nodes.items()))
+
+        new_brb = BrachaMessage(brb_content.id, modified_msg, time.time(), brb_content.type)
+        new_brb_content = json.dumps(new_brb.__dict__)
+        super().receive_message(new_brb_content, new_start)

@@ -8,6 +8,8 @@
 
 2:
   type: "byzantine"
+  messages:
+    - "Malicious message"
 
 3:
   type: "bracha"

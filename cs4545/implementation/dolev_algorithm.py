@@ -65,7 +65,6 @@ def random_delay(min_delay: float = 0.1, max_delay: float = 1.0) -> float:
     """
     return random.uniform(min_delay, max_delay)
 
-
 class DolevAlgorithm(DistributedAlgorithm):
 
     def __init__(self, settings: CommunitySettings) -> None:
