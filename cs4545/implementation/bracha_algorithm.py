@@ -38,18 +38,19 @@ class BrachaAlgorithm(DolevAlgorithm):
 
     def __init__(self, settings: CommunitySettings) -> None:
         super().__init__(settings)
-        self.n = int(os.environ.get("N"))  # nr of nodes in the network
-        self.opt1 = int(os.environ.get("OPT1"))  # is opt1 turned on (1) or off (0)
+        self.n = int(os.environ.get("N"))                                # nr of nodes in the network
+        self.opt1 = int(os.environ.get("OPT1"))                          # is opt1 turned on (1) or off (0)
         self.opt2 = int(os.environ.get("OPT2"))
         self.opt3 = int(os.environ.get("OPT3"))
         self.add_message_handler(BrachaMessage, self.on_send_hop)
         self.sent_ready: Dict[BrachaMessage, bool] = defaultdict(bool)
         self.sent_echo: Dict[BrachaMessage, bool] = defaultdict(bool)
         self.brb_delivered: Dict[BrachaMessage, bool] = defaultdict(bool)
-        self.echos: Dict[BrachaMessage, Set[int]] = defaultdict(
-            set)  # for each msg, store list of nodes which sent you echo
+        self.echos: Dict[BrachaMessage, Set[int]] = defaultdict(set)     # for each msg, store list of nodes which sent you echo
         self.readys: Dict[BrachaMessage, Set[int]] = defaultdict(set)
-        self.brb_broadcast: List[BrachaMessage] = []  # list of msg to broadcast for starting nodes
+        self.brb_broadcast: List[BrachaMessage] = []                     # list of msg to broadcast for starting nodes
+        if self.opt3 == 1:
+            assert self.n > 3 * self.f + 1
 
     async def on_start(self):
         instruction = self.instructions[self.node_id]
@@ -90,6 +91,28 @@ class BrachaAlgorithm(DolevAlgorithm):
         if self.opt2 == 1:
             self.send_echo(msg)  # continue protocol
 
+    # OPT3
+    def echo_and_ready_sets(self, starter_id: int):
+        echo_set_size = math.ceil((self.n + self.f + 1) / 2) + self.f
+        echo_set = [(starter_id + i) % self.n for i in range(1, echo_set_size + 1)]
+
+        ready_set_size = 2 * self.f + 1 + self.f
+        ready_set = [(starter_id + self.n - i) % self.n for i in range(1, ready_set_size + 1)]
+
+        return echo_set, ready_set
+
+    # OPT3
+    # Method is called after a SEND msg is delivered to this node
+    def handle_send_opt3(self, starter_id: int, msg: BrachaMessage):
+        # if I am in echo set do echo
+        # if I am in ready set do ready
+        # else: relay messages, do nothing
+        echo_set, ready_set = self.echo_and_ready_sets(starter_id)
+        if self.node_id in echo_set:
+            self.send_echo(msg)
+        if self.node_id in ready_set:
+            self.send_ready(msg)
+
     # Callback function called from Dolev whenever a message of the corresponding type was delivered
     def receive_message(self, content: str, start_node: int):
         self._message_history.receive_message()
@@ -99,7 +122,10 @@ class BrachaAlgorithm(DolevAlgorithm):
         brb_content: BrachaMessage = self.parse_json_message(content)
 
         if brb_content.type == "send" and brb_content not in self.sent_echo:
-            self.send_echo(brb_content)
+            if self.opt3 == 1:
+                self.handle_send_opt3(start_node, brb_content)
+            else:
+                self.send_echo(brb_content)
 
         if brb_content.type == "echo":
             self.echos[brb_content].add(start_node)
@@ -117,6 +143,11 @@ class BrachaAlgorithm(DolevAlgorithm):
     def send_echo(self, msg: BrachaMessage):
         self.sent_echo[msg] = True
         self.broadcast(self.create_message(msg, "echo"))
+
+    # Used in opt3
+    def send_ready(self, msg: BrachaMessage):
+        self.sent_ready[msg] = True
+        self.broadcast(self.create_message(msg, "ready"))
 
     def handle_echo_message(self, msg: BrachaMessage):
         if len(self.echos[msg]) >= math.ceil((self.n + self.f + 1) / 2) and self.sent_ready[msg] == False:
