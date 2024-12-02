@@ -5,10 +5,10 @@ x-common-variables: &common-variables
   SCENARIO: "scenarios/scenario1.yaml"
   EMPTY: null # In case there are no listed common-variables
   F: 1
-  N: 5
+  N: 25
   OPT1: 0    # turn on and off BRB optimizations
   OPT2: 0
-  OPT3: 1
+  OPT3: 0
 
 services:
   node0:

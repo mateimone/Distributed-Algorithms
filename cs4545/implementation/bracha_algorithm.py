@@ -76,7 +76,7 @@ class BrachaAlgorithm(DolevAlgorithm):
     # OPT2
     def single_hop_send_message(self, msg: BrachaMessage):
         for neighbor_id, peer in self.nodes.items():
-            self.delayed_send(peer, msg, 200)
+            self.delayed_send(peer, msg)
 
     # Wrapper for OPT2
     @message_wrapper(BrachaMessage)
@@ -174,7 +174,7 @@ class BrachaAlgorithm(DolevAlgorithm):
     def create_message(self, msg: BrachaMessage, t: str):
         return BrachaMessage(msg.id, msg.content, msg.time, t)
 
-    def delayed_send(self, peer, msg, max_delay=0):
+    def delayed_send(self, peer, msg, max_delay=200):
         ms = random.random() * max_delay
 
         async def delayed():
@@ -207,7 +207,7 @@ class ByzantineBrachaAlgorithm(BrachaAlgorithm):
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
 
         for neighbor_id, peer in selected_neighbors:
-            self.delayed_send(peer, message, 200)
+            self.delayed_send(peer, message)
 
         self.delivered[message] = True
         self.receive_message(msg, self.node_id)  # deliver to yourself when broadcasting

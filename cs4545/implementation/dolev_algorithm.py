@@ -101,7 +101,7 @@ class DolevAlgorithm(DistributedAlgorithm):
 
         # Broadcast message to neighbors
         for neighbor_id, peer in self.nodes.items():
-            self.delayed_send(peer, message, 200)
+            self.delayed_send(peer, message)
 
         self.delivered[message] = True
 
@@ -111,7 +111,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         message = DolevMessage(generate_unique_id(), msg, Path(self.node_id,[]), time.time())
 
         for neighbor_id, peer in self.nodes.items():
-            self.delayed_send(peer, message, 200)
+            self.delayed_send(peer, message)
 
         self.delivered[message] = True
         self.receive_message(msg, self.node_id) # deliver to yourself when broadcasting
@@ -156,7 +156,7 @@ class DolevAlgorithm(DistributedAlgorithm):
                 # Do not send back to nodes who already received this message or neighbors that delivered
                 if neighbor_id not in newpath.nodes and neighbor_id not in self.neighbors_delivered[payload] and neighbor_id != newpath.start:
                     relay_msg = DolevMessage(payload.id, payload.content, newpath, payload.time)
-                    self.delayed_send(peer, relay_msg, 200)
+                    self.delayed_send(peer, relay_msg)
 
             # Optimization MD.2
             if payload in self.delivered:
@@ -176,7 +176,7 @@ class DolevAlgorithm(DistributedAlgorithm):
             print(f"Error in on_message: {e}")
             raise e
 
-    def delayed_send(self, peer, msg, max_delay=0):
+    def delayed_send(self, peer, msg, max_delay=200):
         ms = random.random() * max_delay
 
         async def delayed():
@@ -189,7 +189,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         inactivity_threshold = 10  # In seconds
 
         while True:
-            await asyncio.sleep(1)  # Check every second
+            await asyncio.sleep(0.1)
             if self.last_message_time:
                 elapsed_time = (datetime.now() - self.last_message_time).total_seconds()
                 if elapsed_time > inactivity_threshold:
@@ -218,7 +218,7 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
         print(f"Node {self.node_id} has chosen to send to {number_neighbors} neighbors.")
 
         for neighbor_id, peer in selected_neighbors:
-            self.delayed_send(peer, message, 200)
+            self.delayed_send(peer, message)
 
         self.delivered[message] = True
 
