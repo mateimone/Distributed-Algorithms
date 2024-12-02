@@ -25,14 +25,8 @@ class BrachaMessage:
     def __eq__(self, other) -> bool:
         return self.id == other.id and self.content == other.content
 
-
 def generate_unique_id():
     return uuid.uuid4().hex
-
-
-def random_delay(min_delay: float = 0.1, max_delay: float = 1.0) -> float:
-    return random.uniform(min_delay, max_delay)
-
 
 class BrachaAlgorithm(DolevAlgorithm):
 
@@ -49,6 +43,7 @@ class BrachaAlgorithm(DolevAlgorithm):
         self.echos: Dict[BrachaMessage, Set[int]] = defaultdict(set)     # for each msg, store list of nodes which sent you echo
         self.readys: Dict[BrachaMessage, Set[int]] = defaultdict(set)
         self.brb_broadcast: List[BrachaMessage] = []                     # list of msg to broadcast for starting nodes
+        self.last_message_time = None
         if self.opt3 == 1:
             assert self.n > 3 * self.f + 1
 
@@ -81,9 +76,7 @@ class BrachaAlgorithm(DolevAlgorithm):
     # OPT2
     def single_hop_send_message(self, msg: BrachaMessage):
         for neighbor_id, peer in self.nodes.items():
-            delay = random_delay()
-            time.sleep(delay)
-            self.ez_send(peer, msg)
+            self.delayed_send(peer, msg, 200)
 
     # Wrapper for OPT2
     @message_wrapper(BrachaMessage)
@@ -181,6 +174,15 @@ class BrachaAlgorithm(DolevAlgorithm):
     def create_message(self, msg: BrachaMessage, t: str):
         return BrachaMessage(msg.id, msg.content, msg.time, t)
 
+    def delayed_send(self, peer, msg, max_delay=0):
+        ms = random.random() * max_delay
+
+        async def delayed():
+            await asyncio.sleep(ms / 1000)
+            self.ez_send(peer, msg)
+
+        asyncio.create_task(delayed())
+
     async def monitor_inactivity(self):
         await super().monitor_inactivity()
 
@@ -205,9 +207,7 @@ class ByzantineBrachaAlgorithm(BrachaAlgorithm):
         selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
 
         for neighbor_id, peer in selected_neighbors:
-            delay = random_delay()
-            time.sleep(delay)
-            self.ez_send(peer, message)
+            self.delayed_send(peer, message, 200)
 
         self.delivered[message] = True
         self.receive_message(msg, self.node_id)  # deliver to yourself when broadcasting

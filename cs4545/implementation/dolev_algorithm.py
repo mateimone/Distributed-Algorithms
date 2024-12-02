@@ -59,12 +59,6 @@ class DolevMessage:
 def generate_unique_id():
     return uuid.uuid4().hex
 
-def random_delay(min_delay: float = 0.1, max_delay: float = 1.0) -> float:
-    """
-    Return a random delay between `min_delay` and `max_delay` seconds.
-    """
-    return random.uniform(min_delay, max_delay)
-
 class DolevAlgorithm(DistributedAlgorithm):
 
     def __init__(self, settings: CommunitySettings) -> None:
@@ -107,9 +101,7 @@ class DolevAlgorithm(DistributedAlgorithm):
 
         # Broadcast message to neighbors
         for neighbor_id, peer in self.nodes.items():
-            delay = random_delay()
-            time.sleep(delay)
-            self.ez_send(peer, message)
+            self.delayed_send(peer, message, 200)
 
         self.delivered[message] = True
 
@@ -119,9 +111,7 @@ class DolevAlgorithm(DistributedAlgorithm):
         message = DolevMessage(generate_unique_id(), msg, Path(self.node_id,[]), time.time())
 
         for neighbor_id, peer in self.nodes.items():
-            delay = random_delay()
-            time.sleep(delay)
-            self.ez_send(peer, message)
+            self.delayed_send(peer, message, 200)
 
         self.delivered[message] = True
         self.receive_message(msg, self.node_id) # deliver to yourself when broadcasting
@@ -165,10 +155,8 @@ class DolevAlgorithm(DistributedAlgorithm):
             for neighbor_id, peer in self.nodes.items():
                 # Do not send back to nodes who already received this message or neighbors that delivered
                 if neighbor_id not in newpath.nodes and neighbor_id not in self.neighbors_delivered[payload] and neighbor_id != newpath.start:
-                    delay = random_delay()
-                    time.sleep(delay)
                     relay_msg = DolevMessage(payload.id, payload.content, newpath, payload.time)
-                    self.ez_send(peer, relay_msg)
+                    self.delayed_send(peer, relay_msg, 200)
 
             # Optimization MD.2
             if payload in self.delivered:
@@ -187,6 +175,15 @@ class DolevAlgorithm(DistributedAlgorithm):
         except Exception as e:
             print(f"Error in on_message: {e}")
             raise e
+
+    def delayed_send(self, peer, msg, max_delay=0):
+        ms = random.random() * max_delay
+
+        async def delayed():
+            await asyncio.sleep(ms / 1000)
+            self.ez_send(peer, msg)
+
+        asyncio.create_task(delayed())
 
     async def monitor_inactivity(self):
         inactivity_threshold = 10  # In seconds
@@ -221,9 +218,7 @@ class ByzantineDolevAlgorithm(DolevAlgorithm):
         print(f"Node {self.node_id} has chosen to send to {number_neighbors} neighbors.")
 
         for neighbor_id, peer in selected_neighbors:
-            delay = random_delay()
-            time.sleep(delay)
-            self.ez_send(peer, message)
+            self.delayed_send(peer, message, 200)
 
         self.delivered[message] = True
 
