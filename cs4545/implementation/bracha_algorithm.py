@@ -218,7 +218,7 @@ class ByzantineBrachaAlgorithm(BrachaAlgorithm):
         modified_msg = brb_content.content
         new_start = start_node
 
-        actions = ["skip", "empty path", "alter content", "alter start", "shuffle path", "remove nodes"]
+        actions = ["skip", "alter content", "alter start"]
         action = random.choice(actions)
 
         if action == "skip":
@@ -231,4 +231,11 @@ class ByzantineBrachaAlgorithm(BrachaAlgorithm):
 
         new_brb = BrachaMessage(brb_content.id, modified_msg, time.time(), brb_content.type)
         new_brb_content = json.dumps(new_brb.__dict__)
+
+        # number_neighbors = random.randint(0, len(self.nodes) - 1)
+        # selected_neighbors = random.sample(list(self.nodes.items()), k=number_neighbors)
+        #
+        # for neighbor_id, peer in selected_neighbors:
+        #     self.ez_send(peer, new_brb)
+
         super().receive_message(new_brb_content, new_start)

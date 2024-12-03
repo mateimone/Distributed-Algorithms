@@ -121,7 +121,7 @@ def aggregate(topology_file, output):
     }
 
     df = None
-    experiment_file = "../experiments/experimentBrachaOpt0.csv"
+    experiment_file = "../experiments/experimentBrachaOptim2.csv"
     if os.path.exists(experiment_file) and os.path.getsize(experiment_file) > 0:
         df = pd.read_csv(experiment_file)
     else:
@@ -135,7 +135,7 @@ def aggregate(topology_file, output):
 
 
 @cli.command("plot")
-@click.option("--experiment_file", default="../experiments/experimentBrachaOpt3.csv")
+@click.option("--experiment_file", default="../experiments/experimentBrachaOptim1.csv")
 @click.option("--output", default="../experiments")
 @click.option("--metric", default="message_complexity", type=click.Choice(['message_complexity', 'latency'], case_sensitive=False))
 def plot(experiment_file, output, metric):
@@ -158,6 +158,111 @@ def plot(experiment_file, output, metric):
     plt.legend()
 
     output_file = os.path.join(output, f"{metric}_vs_network_size_bracha.png")
+    plt.savefig(output_file)
+
+    plt.tight_layout()
+    plt.show()
+
+
+@cli.command("plot_multiple")
+@click.option("--experiment_files",
+              default="../experiments/experimentBrachaBaseline.csv,../experiments/experimentBrachaOptim1.csv,../experiments/experimentBrachaOptim2.csv,../experiments/experimentBrachaOptim3.csv")
+@click.option("--output", default="../experiments")
+def plot_multiple(experiment_files, output):
+    experiment_files = experiment_files.split(',')
+    metrics = ['message_complexity', 'latency']
+
+    comparisons = [
+        ("Optim1", "Baseline"),
+        ("Optim2", "Baseline"),
+        ("Optim3", "Baseline")
+    ]
+
+    x_ticks = [4, 5, 6, 7, 8, 10, 14, 17, 20, 22, 25, 26]
+
+    def process_file(file):
+        df = pd.read_csv(file)
+        df_filtered = df[df['broadcasts'] == 1]
+        df_avg = df_filtered.groupby('n', as_index=False)[metrics].mean()
+        return df_avg.sort_values(by='n')
+
+    data = {
+        "Optim1": process_file("../experiments/experimentBrachaOptim1.csv"),
+        "Optim2": process_file("../experiments/experimentBrachaOptim2.csv"),
+        "Optim3": process_file("../experiments/experimentBrachaOptim3.csv"),
+        "Baseline": process_file("../experiments/experimentBrachaBaseline.csv")
+    }
+
+    for opt_pair in comparisons:
+        opt1, opt2 = opt_pair
+
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        fig.suptitle(f"{opt1} vs {opt2}", fontsize=16)
+
+        for idx, metric in enumerate(metrics):
+            ax = axes[idx]
+
+            for opt, style in zip([opt1, opt2], ['-', '--']):
+                if opt in data:
+                    df_avg = data[opt]
+                    ax.plot(df_avg['n'], df_avg[metric], marker='o', linestyle=style, label=opt)
+
+            ax.set_xticks(x_ticks)
+            ax.set_xlim([min(x_ticks), max(x_ticks)])  # Ensure the limits fit the specified ticks
+
+            ax.set_xlabel("Network Size", fontsize=12)
+            ax.set_ylabel(metric.replace('_', ' ').capitalize(), fontsize=12)
+            ax.set_title(f"{metric.replace('_', ' ').capitalize()} vs Network size", fontsize=14)
+            ax.grid(True, which="both", linestyle='--', linewidth=0.5)
+            ax.legend()
+
+        output_file = os.path.join(output, f"{opt1}_vs_{opt2}_bracha.png")
+        plt.savefig(output_file)
+
+        plt.tight_layout()
+        plt.show()
+
+@cli.command("plot_all")
+@click.option("--experiment_files", default="../experiments/experimentBrachaOptim1.csv,../experiments/experimentBrachaOptim2.csv,../experiments/experimentBrachaOptim3.csv,../experiments/experimentBrachaBaseline.csv")
+@click.option("--output", default="../experiments")
+def plot_all(experiment_files, output):
+    experiment_files = experiment_files.split(',')
+    labels = ["Optim1", "Optim2", "Optim3", "Baseline"]
+    styles = ['-', '-', '-', '-']
+    colors = ['blue', 'green', 'red', 'orange']
+
+    metrics = ['message_complexity', 'latency']
+
+    x_ticks = [4, 5, 6, 7, 8, 10, 14, 17, 20, 22, 25, 26]
+
+    def process_file(file):
+        df = pd.read_csv(file)
+        df_filtered = df[df['broadcasts'] == 1]
+        df_avg = df_filtered.groupby('n', as_index=False)[metrics].mean()
+        return df_avg.sort_values(by='n')
+
+    data = {label: process_file(file) for label, file in zip(labels, experiment_files)}
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    fig.suptitle("Message Complexity and Latency for All Optimizations", fontsize=16)
+
+    for idx, metric in enumerate(metrics):
+        ax = axes[idx]
+
+        for label, style, color in zip(labels, styles, colors):
+            df_avg = data[label]
+            ax.plot(df_avg['n'], df_avg[metric], marker='o', linestyle=style, color=color, label=label)
+
+        ax.set_xticks(x_ticks)
+        ax.set_xlim([min(x_ticks), max(x_ticks)])
+
+        ax.set_xlabel("Network size", fontsize=12)
+        ax.set_ylabel(metric.replace('_', ' ').capitalize(), fontsize=12)
+        ax.set_title(f"{metric.replace('_', ' ').capitalize()} vs Network size", fontsize=14)
+        ax.grid(True, which="both", linestyle='--', linewidth=0.5)
+        ax.legend()
+
+    output_file = os.path.join(output, "all_optimizations_comparison.png")
     plt.savefig(output_file)
 
     plt.tight_layout()
