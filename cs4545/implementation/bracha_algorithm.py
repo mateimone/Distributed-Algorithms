@@ -233,3 +233,7 @@ class ByzantineBrachaAlgorithm(BrachaAlgorithm):
         new_brb_content = json.dumps(new_brb.__dict__)
 
         super().receive_message(new_brb_content, new_start)
+
+    @override
+    def handle_ready_delivery(self, msg: BrachaMessage):
+        pass
