@@ -4,7 +4,11 @@ x-common-variables: &common-variables
   TOPOLOGY: "topologies/ring.yaml"
   SCENARIO: "scenarios/scenario1.yaml"
   EMPTY: null # In case there are no listed common-variables
-  F: 2
+  F: 1
+  N: 5
+  OPT1: 0    # turn on and off BRB optimizations
+  OPT2: 0
+  OPT3: 1
 
 services:
   node0:
