@@ -224,8 +224,7 @@ class ByzantineBrachaAlgorithm(BrachaAlgorithm):
         if action == "skip":
             return
         if action == "alter content":
-            random_content_number = random.randint(0, 1000)
-            modified_msg = f"Tampered content {str(random_content_number)}"
+            modified_msg = f"Tampered content"
         if action == "alter start":
             new_start = random.randint(0, len(self.nodes.items()))
 
