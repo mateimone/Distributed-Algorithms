@@ -18,6 +18,7 @@ class BrachaMessage:
     content: str
     time: float
     type: str
+    bid: int            # The id of the node who broadcasted the message
 
     def __hash__(self) -> int:
         return (self.id, self.content).__hash__()
@@ -56,7 +57,7 @@ class BrachaAlgorithm(DolevAlgorithm):
                 # Get unique id for a message
                 unique_id = generate_unique_id()
                 print(f"Bracha Node {self.node_id} is broadcasting message {unique_id}: {message}")
-                self.brb_broadcast.append(BrachaMessage(unique_id, message, time.time(), "send"))
+                self.brb_broadcast.append(BrachaMessage(unique_id, message, time.time(), "send", self.node_id))
 
         # If node has messages to deliver, then it is a starting node
         for message in self.brb_broadcast:
@@ -69,9 +70,19 @@ class BrachaAlgorithm(DolevAlgorithm):
         await asyncio.create_task(self.monitor_inactivity())
 
     # Function to broadcast a BrachaMessage as a string
+    # Called by Bracha on_start
     def broadcast(self, message: BrachaMessage):
         string_to_broadcast = json.dumps(message.__dict__)
         super().on_broadcast_string(string_to_broadcast)
+
+    # Called by RCO
+    # Content field is the actual RCO message
+    def broadcast_string(self, msg: str):
+        message = BrachaMessage(generate_unique_id(), msg, time.time(), "send", self.node_id)
+        if self.opt2 == 1:  # single hop send messages
+            self.single_hop_send_message(message)
+        else:
+            self.broadcast(message)  # use dolev broadcast
 
     # OPT2
     def single_hop_send_message(self, msg: BrachaMessage):
@@ -165,14 +176,16 @@ class BrachaAlgorithm(DolevAlgorithm):
     def handle_ready_delivery(self, msg: BrachaMessage):
         if len(self.readys[msg]) >= 2 * self.f + 1 and self.brb_delivered[msg] == False:
             self.brb_delivered[msg] = True
-            print(f"[BRB Delivered] {msg.content} at {time.time() - msg.time}")
+            # print(f"[BRB Delivered] {msg.content} at {time.time() - msg.time}")
+            # RCO
+            self.rco_receive_message(msg.content)
 
     def parse_json_message(self, message: str):
         msg = json.loads(message)
         return BrachaMessage(**msg)
 
     def create_message(self, msg: BrachaMessage, t: str):
-        return BrachaMessage(msg.id, msg.content, msg.time, t)
+        return BrachaMessage(msg.id, msg.content, msg.time, t, msg.bid)
 
     def delayed_send(self, peer, msg, max_delay=200):
         ms = random.random() * max_delay

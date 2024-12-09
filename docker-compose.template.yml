@@ -8,7 +8,7 @@ x-common-variables: &common-variables
   N: 5
   OPT1: 0    # turn on and off BRB optimizations
   OPT2: 0
-  OPT3: 1
+  OPT3: 0
 
 services:
   node0:
