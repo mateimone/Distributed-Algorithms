@@ -176,6 +176,7 @@ class BrachaAlgorithm(DolevAlgorithm):
     def handle_ready_delivery(self, msg: BrachaMessage):
         if len(self.readys[msg]) >= 2 * self.f + 1 and self.brb_delivered[msg] == False:
             self.brb_delivered[msg] = True
+            self.message_delivered_time[msg.__hash__()] = time.time() - msg.time
             # print(f"[BRB Delivered] {msg.content} at {time.time() - msg.time}")
             # RCO
             self.rco_receive_message(msg.content)

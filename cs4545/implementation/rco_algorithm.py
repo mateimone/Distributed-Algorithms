@@ -64,8 +64,7 @@ class RCOAlgorithm(BrachaAlgorithm):
         super().broadcast_string(string_to_broadcast)
 
         self.increment_VC(self.node_id)
-        print(f"[RCO Delivered] {message.content} at {time.time() - message.time}, my VC {self.VC}")
-        self.append_output(f"[RCO Delivered] {message.content} at {time.time() - message.time}, my VC {self.VC}")
+        self.after_deliver(message)
 
     def increment_VC(self, node_id: int):
         self.VC[node_id] += 1
@@ -82,9 +81,15 @@ class RCOAlgorithm(BrachaAlgorithm):
         self.pending.remove(last_message)
         self.rco_delivered[last_message] = True
         self.increment_VC(last_message.bid)      # Increment your VC of the broadcaster node
-        print(f"[RCO Delivered] {last_message.content} at {time.time() - last_message.time}, my VC {self.VC}")
-        self.append_output(f"[RCO Delivered] {last_message.content} at {time.time() - last_message.time}, my VC {self.VC}")
+        self.after_deliver(last_message)
+
         self.deliver_pending()
+
+    # Handles delivery printing and appending to output file
+    def after_deliver(self, message: RCOMessage):
+        self.message_delivered_time[message.__hash__()] = time.time() - message.time
+        print(f"[RCO Delivered] {message.content} at {time.time() - message.time}, my VC {self.VC}")
+        self.append_output(f"[RCO Delivered] {message.content} at {time.time() - message.time}, my VC {self.VC}")
 
     def rco_receive_message(self, content: str):
         self._message_history.receive_message()
