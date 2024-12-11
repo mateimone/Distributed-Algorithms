@@ -21,7 +21,7 @@
     - "Message example 7"
 
 4:
-  type: "rco"
+  type: "byzantine"
 
 5:
   type: "rco"

@@ -209,6 +209,7 @@ class ByzantineBrachaAlgorithm(BrachaAlgorithm):
     async def on_start(self):
         await super().on_start()
 
+    @override
     def broadcast(self, message: BrachaMessage):
         string_to_broadcast = json.dumps(message.__dict__)
         self.on_broadcast_string(string_to_broadcast)
