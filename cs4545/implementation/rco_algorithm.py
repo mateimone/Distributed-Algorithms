@@ -119,8 +119,10 @@ class RCOByzantineAlgorithm(RCOAlgorithm):
         super().__init__(settings)
 
     async def on_start(self):
+        # CHANGE TO INITIAL VC WHICH AFFECTS MESSAGE DELIVERY
         self.VC = [0] * self.n
-        new_start = random.randint(0, self.n - 1)
+
+        # new_start = random.randint(0, self.n - 1)
 
         instruction = self.instructions[self.node_id]
 
