@@ -1,6 +1,7 @@
 from .bracha_algorithm import *
 from .dolev_algorithm import *
 from .echo_algorithm import *
+from .rco_algorithm import *
 from .ring_election import *
 from .crash_algorithm import *
 
@@ -14,6 +15,8 @@ def get_algorithm(name):
         return DolevAlgorithm
     elif name == "bracha":
         return BrachaAlgorithm
+    elif name == "rco":
+        return RCOAlgorithm
     elif name == "crash":
         return CrashAlgorithm
     elif name == "byzantine":

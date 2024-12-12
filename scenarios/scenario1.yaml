@@ -1,61 +1,39 @@
 0:
-  type: "bracha"
+  type: "rco"
   messages:
     - "Message example 1"
+    - "Message example 2"
+    - "Message example 3"
 
 1:
-  type: "bracha"
+  type: "rco"
+  messages:
+    - "Message example 4"
+    - "Message example 5"
 
 2:
-  type: "byzantine"
+  type: "rco"
 
 3:
-  type: "bracha"
+  type: "rco"
+  messages:
+    - "Message example 6"
+    - "Message example 7"
 
 4:
-  type: "bracha"
+  type: "rco"
 
 5:
-  type: "bracha"
+  type: "rco"
 
 6:
-  type: "bracha"
+  type: "rco"
 
 7:
-  type: "bracha"
+  type: "rco"
 
 8:
-  type: "bracha"
+  type: "rco"
 
 9:
-  type: "bracha"
-
-10:
-  type: "bracha"
-
-11:
-  type: "bracha"
-
-12:
-  type: "bracha"
-
-13:
-  type: "bracha"
-
-14:
-  type: "bracha"
-
-15:
-  type: "bracha"
-
-16:
-  type: "bracha"
-
-17:
-  type: "bracha"
-
-18:
-  type: "bracha"
-
-19:
-  type: "bracha"
+  type: "rco"
