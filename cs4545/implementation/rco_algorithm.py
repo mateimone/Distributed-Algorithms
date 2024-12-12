@@ -98,6 +98,7 @@ class RCOAlgorithm(BrachaAlgorithm):
         # Parse content
         rco_content: RCOMessage = self.parse_json_into_rcoMessage(content)
 
+        # if self.node_id != rco_content.bid or self.rco_delivered[rco_content] == False:
         if self.node_id != rco_content.bid:
             self.pending.append(rco_content)
             self.deliver_pending()
@@ -111,3 +112,46 @@ class RCOAlgorithm(BrachaAlgorithm):
 
     async def monitor_inactivity(self):
         await super().monitor_inactivity()
+
+class RCOByzantineAlgorithm(RCOAlgorithm):
+
+    def __init__(self, settings: CommunitySettings) -> None:
+        super().__init__(settings)
+
+    async def on_start(self):
+        # CHANGE TO INITIAL VC WHICH AFFECTS MESSAGE DELIVERY
+        self.VC = [0] * self.n
+
+        # new_start = random.randint(0, self.n - 1)
+
+        instruction = self.instructions[self.node_id]
+
+        if "messages" in instruction:
+            messages = instruction["messages"]
+            for (i, message) in enumerate(messages):
+                # Get unique id for a message
+                unique_id = generate_unique_id()
+                print(f"RCO Node {self.node_id} is broadcasting message {unique_id}: {message}")
+                self.rco_broadcast.append(RCOMessage(unique_id, message, time.time(), self.node_id, self.VC))
+
+        # If node has messages to deliver, then it is a starting node
+        for message in self.rco_broadcast:
+            self.broadcast_rco(message)
+
+        # Start monitoring for inactivity
+        await asyncio.create_task(self.monitor_inactivity())
+
+    @override
+    def broadcast_rco(self, message: RCOMessage):
+        string_to_broadcast = json.dumps(message.__dict__)
+        super().broadcast_string(string_to_broadcast)
+
+        self.increment_VC(self.node_id)
+
+
+    @override
+    def rco_receive_message(self, content: str):
+        self._message_history.receive_message()
+        self.last_message_time = datetime.now()
+
+        return
