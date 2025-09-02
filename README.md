@@ -1,4 +1,8 @@
-# CS4545 Distributed Algorithms Lab
+## This repository contains 3 Distributed Algorithms which build on one another to protect against crashing and Byzantine nodes.
+The algorithms are: Dolev's protocol, Byzantine Reliable Broadcast, and Causal-Order Broadcast
+
+
+## CS4545 Distributed Algorithms Lab
 ![course header](img/course_header.jpeg)
 
 This code is offered as a template for the course CS4545.
